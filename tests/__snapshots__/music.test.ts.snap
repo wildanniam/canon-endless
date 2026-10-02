@@ -1,0 +1,82 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`deterministic composition > locks an initial v1 phrase so algorithm changes require explicit versioning 1`] = `
+{
+  "cycle": 0,
+  "notes": [
+    {
+      "duration": 8,
+      "midi": 66,
+      "tick": 0,
+      "velocity": 0.8552772180177272,
+    },
+    {
+      "duration": 8,
+      "midi": 69,
+      "tick": 8,
+      "velocity": 0.8070356112346053,
+    },
+    {
+      "duration": 4,
+      "midi": 71,
+      "tick": 16,
+      "velocity": 0.8654123555775732,
+    },
+    {
+      "duration": 4,
+      "midi": 73,
+      "tick": 20,
+      "velocity": 0.6076126316934825,
+    },
+    {
+      "duration": 4,
+      "midi": 69,
+      "tick": 24,
+      "velocity": 0.8142690542526543,
+    },
+    {
+      "duration": 4,
+      "midi": 69,
+      "tick": 28,
+      "velocity": 0.5623402139730752,
+    },
+    {
+      "duration": 8,
+      "midi": 71,
+      "tick": 32,
+      "velocity": 0.8776138455606997,
+    },
+    {
+      "duration": 8,
+      "midi": 69,
+      "tick": 40,
+      "velocity": 0.7830021518561989,
+    },
+    {
+      "duration": 4,
+      "midi": 67,
+      "tick": 48,
+      "velocity": 0.8194043914601207,
+    },
+    {
+      "duration": 4,
+      "midi": 67,
+      "tick": 52,
+      "velocity": 0.5700041060242802,
+    },
+    {
+      "duration": 4,
+      "midi": 69,
+      "tick": 56,
+      "velocity": 0.821461056303233,
+    },
+    {
+      "duration": 4,
+      "midi": 69,
+      "tick": 60,
+      "velocity": 0.6153112834133209,
+    },
+  ],
+  "stage": 0,
+}
+`;
