@@ -25,3 +25,7 @@ Follow Wildan's global GitHub workflow. This is a Vite + TypeScript application 
 Read `DESIGN.md` before substantial visual work. Verify desktop/mobile in a real browser, including long accidental chord labels, all scene palettes, native dialogs, first play, pause, shared sessions and reduced motion. Temporary evidence goes in ignored `output/playwright/`; curated screenshots in `docs/images/`.
 
 Do not conflate deterministic stress tests with real-time endurance, measured audio with human listening, or a successful build with deployment. See `docs/verification.md` for coverage and remaining limits.
+
+## Deployment
+
+GitHub Pages uses `.github/workflows/pages.yml`, publishing only `dist/` after `npm run check` passes. The initial publishing branch is `codex/1-endless-canon`; `main` is configured for after merge. Remove the temporary branch trigger once merged. Keep Pages permissions scoped to the deploy job; do not add repository secrets. Preserve Vite relative base paths so fonts, the worker and share links work at `/canon-endless/`. Deployment authorization does not authorize merging PRs.

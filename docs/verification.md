@@ -75,4 +75,8 @@ Repeat `npm ci && npm run check`, start `npm run dev`, and test the interactions
 - Safari/iOS, Android hardware, sustained device performance. Rendering caps at 30 fps, not the plan's 60 fps target.
 - Human Canon recognition, long-session musical quality, strict counterpoint, original-phrase corpus comparison, or no-repeat guarantees.
 - Long recordings, every browser codec, cross-browser background/sleep behavior.
-- A deployed public website; GitHub source and local preview do not establish deployment.
+
+
+## GitHub Pages deployment
+
+The Pages workflow runs all checks before uploading `dist/` and deploying. Local evidence above does not by itself prove deployment. The deployment run and public-site smoke results are recorded in [PR #2](https://github.com/wildanniam/canon-endless/pull/2). Public smoke checks must cover `/canon-endless/` asset and worker requests, user-gesture playback, setting transitions, a scene change and a shared URL reload.

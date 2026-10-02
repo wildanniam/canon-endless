@@ -2,6 +2,8 @@
 
 A familiar melody. An endless beginning.
 
+[Listen on GitHub Pages](https://wildanniam.github.io/canon-endless/)
+
 An ambient music instrument inspired by Pachelbel's Canon: a generative melody, three echoing voices, and six living nature scenes. Everything is composed and drawn in your browser.
 
 ![Endless Canon — Stillwater](docs/images/stillwater.png)
@@ -70,6 +72,8 @@ Chromium desktop and responsive viewports were checked, including actual audio o
 
 ## Build and hosting
 
-`npm run build` writes a static site to `dist/`. Relative asset paths support a root domain or repository subpath. Serve `dist/` over HTTPS using your chosen static host. Verification CI is included; no site is automatically deployed.
+`npm run build` writes a static site to `dist/`. Relative asset paths support a root domain or repository subpath. The `Deploy GitHub Pages` workflow runs the full checks and publishes only `dist/` to [GitHub Pages](https://wildanniam.github.io/canon-endless/). Pushes to `codex/1-endless-canon` publish the initial release while PR #2 is open; pushes to `main` also deploy once the workflow is merged. After merging, remove the temporary implementation-branch trigger. The PR is not automatically merged.
+
+Pages uses GitHub Actions as its publishing source. Deployment needs only the built-in short-lived GitHub token/OIDC permissions, no repository secrets. To redeploy, push a verified change to a configured publishing branch; after this workflow exists on the default branch, it can also be dispatched manually. The environment must permit the publishing branch. Deployment is serialized and gated on the build job. See [GitHub’s custom Pages workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
 
 No analytics or remote runtime media are used. Favorites stay in `localStorage`; share URLs contain composition settings. DM Sans and Cormorant Garamond are distributed under their [bundled SIL Open Font licenses](public/licenses/).
