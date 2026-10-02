@@ -8,6 +8,7 @@ export class SoundBank {
   readonly master: GainNode;
   readonly analyser: AnalyserNode;
   readonly output: WaveShaperNode;
+  private transitionGain: GainNode;
   private layers = new Map<Layer, GainNode>();
   private active = new Set<OscillatorNode>();
   private ambience: AudioBufferSourceNode;
@@ -23,6 +24,7 @@ export class SoundBank {
   constructor(private context: BaseAudioContext) {
     this.master = context.createGain();
     this.master.gain.value = 0;
+    this.transitionGain = context.createGain();
     this.compressor = context.createDynamicsCompressor();
     this.compressor.threshold.value = -18;
     this.compressor.knee.value = 16;
@@ -37,6 +39,7 @@ export class SoundBank {
     this.analyser = context.createAnalyser();
     this.analyser.fftSize = 256;
     this.compressor
+      .connect(this.transitionGain)
       .connect(this.master)
       .connect(this.output)
       .connect(this.analyser)
@@ -96,9 +99,24 @@ export class SoundBank {
     for (const layer of LAYERS)
       this.layers
         .get(layer)!
-        .gain.setTargetAtTime(mix[layer] / 100, time, 0.04);
-    this.master.gain.setTargetAtTime((volume / 100) * 0.7, time, 0.04);
-    this.wet.gain.setTargetAtTime(dreamy ? 0.4 : 0.22, time, 0.08);
+        .gain.setTargetAtTime(mix[layer] / 100, time, 0.18);
+    this.master.gain.setTargetAtTime((volume / 100) * 0.7, time, 0.08);
+    this.wet.gain.setTargetAtTime(dreamy ? 0.4 : 0.22, time, 0.22);
+  }
+
+  /** Independent of mix/master automation, including changes during a fade. */
+  fadeTo(value: number, seconds: number) {
+    const time = this.context.currentTime;
+    const gain = this.transitionGain.gain;
+    if (typeof gain.cancelAndHoldAtTime === "function")
+      gain.cancelAndHoldAtTime(time);
+    else {
+      const current = gain.value;
+      gain.cancelScheduledValues(time);
+      gain.setValueAtTime(current, time);
+    }
+    if (seconds === 0) gain.setValueAtTime(value, time);
+    else gain.linearRampToValueAtTime(value, time + seconds);
   }
 
   scene(scene: Scene) {
@@ -200,6 +218,7 @@ export class SoundBank {
     this.reverb.disconnect();
     this.wet.disconnect();
     this.compressor.disconnect();
+    this.transitionGain.disconnect();
     this.master.disconnect();
     this.output.disconnect();
     this.analyser.disconnect();

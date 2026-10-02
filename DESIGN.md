@@ -40,3 +40,14 @@ Glass panels, neon gradients, generic dashboard cards, fabricated activity, unre
 ## Verification
 
 Check first-play, pause/resume, settings, scenes, mixer, saved/share links, keyboard, zen, recording, mobile scrolling and reduced motion in a real browser. Inspect canvas screenshots as well as DOM. Browser audio graph/render checks are not a substitute for human listening or a two-hour real-device soak.
+
+## Motion refinement — 2026-10-03
+
+User feedback: music settings and surroundings currently change too abruptly; add a visible transition overlay and smoother motion. Keep the existing visual language and layout.
+
+- Signature transition: a light veil over the scenery, three drawn melodic lines, and a short “Settling into…” label identifying the actual new setting. It does not intercept pointer or keyboard input. Mixer feedback appears inside its native dialog.
+- Tonal changes: fade out for about 300 ms, apply the latest requested key/mood/movement at silence, then fade in over 850 ms. Volume and layer automation have their own gains so they cannot cancel that fade. Pausing or loading a session settles pending state without starting audio.
+- Continuous controls: volume and mix ramp; tempo glides over 900 ms. Slider feedback appears when committing a value, rather than covering the screen during a drag.
+- Scenery: 1.4-second crossfade, including while paused. Rapid scene changes start from the current blended image, with one retained snapshot. The scene returns to rest after the transition.
+- Panels/buttons: restrained 180–250 ms opacity/translation, stable native dialog focus, no bouncing. Initial entrance happens once.
+- Reduced motion: no scenery crossfade, transform choreography or animated linework. A compact static setting notification remains; audio smoothing is unchanged.

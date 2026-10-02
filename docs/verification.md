@@ -2,7 +2,7 @@
 
 ## Automated checks
 
-`npm run check` passed: ESLint, strict TypeScript, **20 Vitest tests**, Vite production build.
+`npm run check` passed: ESLint, strict TypeScript, **29 Vitest tests**, Vite production build.
 
 - Major/minor progressions and transposition across seven keys.
 - Chord membership on strong beats, scale/range, positive duration and 64-tick coverage across 7 keys × 3 moods × 3 movement levels × 48 cycles.
@@ -10,6 +10,7 @@
 - Voice entrances, exact delayed echoes, rest with two voices, stage durations across 30 epochs.
 - Cache ≤12 entries across 10,000 simulated cycles with changing settings.
 - Complete URL round trips, invalid/prototype/empty parameters, preset isolation, corrupt/blocked storage, favorite cap.
+- Nine transport regressions: delayed tonal commit, coalesced rapid edits, live mix isolation, uncommitted density isolation, silent changes without autoplay, pause/resume, browser interruption, retargeted tempo glide and rewind target preservation.
 
 `npm audit` reported **0 vulnerabilities** after selecting patched Vitest. This is a dated audit result, not a permanent guarantee.
 
@@ -49,11 +50,24 @@ Three 12-second stereo `OfflineAudioContext` renders using the production synthe
 
 These establish signal generation, mute and absence of digital clipping in these renders, not subjective quality or hardware loudness safety.
 
+## Smooth setting transitions
+
+Follow-up verification on the production build after motion refinement:
+
+- Real playback retained the old key during fade-out, then applied the latest of rapid key/mood selections. Output recovered after fade-in. A volume edit during the transition did not leak pending tonal settings.
+- Pause during a pending change settled settings with a suspended context; scheduled ticks stayed frozen; resume worked. Tempo moved through an intermediate value before reaching 120 bpm.
+- Sampled scene pixels showed an intermediate blend, not an immediate replacement. With audio paused, the canvas became byte-identical after the blend ended. Rapid forest-to-aurora choices settled on aurora.
+- Checked overlays at 1440×900, 390×844 and 320×844, including the longer layer labels. Mixer feedback leaves the preset label and controls visible. Escape completes its exit and restores focus to the opening control.
+- Reduced motion hides the decorative veil/linework, uses compact static feedback and keeps scenery static after selection.
+- Production UI run had no runtime exceptions or failed requests. Axe found **0 violations** after animations settled in desktop lake/aurora, mobile lake/mixer and reduced-motion 320 px states. Transient fading text is intentionally not the stable-state contrast measurement.
+
+A three-second stereo `OfflineAudioContext` render exercised the production `SoundBank`: sustained voices, 260 ms fade-out, a simultaneous master/mix edit, silent reset and 850 ms fade-in. Measured left-channel RMS was **0.032315 before**, **0.005303 during fade-out**, **0 at the silent reset**, and **0.022239 after recovery**. Peak was **0.122916**, with no nonfinite samples. This verifies signal-envelope behavior, not subjective listening quality.
+
 ## Evidence and reproduction
 
 Curated screenshots: [images](images/). Detailed local screenshots and recording: ignored `output/playwright/`. Browser checks used the installed Playwright CLI and are manual release evidence, not browser CI tests.
 
-Repeat `npm ci && npm run check`, start `npm run dev`, and test the interactions above. Useful URL: `?seed=browser-qa&tempo=120&density=80&cycle=2`. No microphone is involved.
+Repeat `npm ci && npm run check`, start `npm run dev`, and test the interactions above. Useful URL: `?seed=browser-qa&tempo=120&density=80&cycle=2`. For transitions, start playback, choose keys/moods rapidly, change volume during the fade, pause mid-change and resume. With playback paused, switch scenes twice within a second and observe the final scene settle. Repeat with reduced motion enabled. No microphone is involved.
 
 ## Not yet verified
 

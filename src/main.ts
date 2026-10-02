@@ -20,6 +20,7 @@ import {
 } from "./settings";
 import type { Favorite, Layer, Scene } from "./settings";
 import { icon, logo } from "./ui/icons";
+import { ChangeFeedback, openPanel, closePanel } from "./ui/motion";
 
 let settings = parseSettings(location.search, newSeed());
 export const player = new Player(settings);
@@ -41,6 +42,17 @@ const range = (
 
 app.innerHTML = `
   <canvas id="landscape" aria-hidden="true"></canvas>
+  <div class="change-surface" aria-hidden="true">
+    <div class="change-veil"></div>
+    <div class="change-message">
+      <svg class="change-lines" width="140" height="58" viewBox="0 0 140 58" fill="none"><path d="M4 29C28-7 42-7 70 29s42 36 66 0"/><path d="M4 29C28 1 42 1 70 29s42 28 66 0"/><path d="M4 29C28 9 42 9 70 29s42 20 66 0"/></svg>
+      <p class="change-eyebrow" data-change-label>Settling into</p>
+      <p class="change-title" data-change-title></p>
+      <p class="change-detail" data-change-detail></p>
+      <div class="change-track"><span id="change-progress"></span></div>
+    </div>
+  </div>
+  <div id="change-announcement" class="sr-only" role="status" aria-live="polite"></div>
   <div class="chrome">
     <header class="masthead">
       <a class="wordmark" href="./" aria-label="Endless Canon home">${logo}<span>endless canon</span></a>
@@ -101,6 +113,7 @@ app.innerHTML = `
   </dialog>
   <dialog id="mixer-dialog" aria-labelledby="mixer-dialog-title">
     <div class="dialog-heading"><div><p class="eyebrow">Make a little space</p><h2 id="mixer-dialog-title">Your ensemble.</h2></div><button class="icon-button" data-close aria-label="Close ensemble">${icon("close")}</button></div>
+    <div class="dialog-change" aria-hidden="true"><span class="dialog-change-mark">${logo}</span><div><small data-change-label></small><strong data-change-title></strong><span data-change-detail></span></div></div>
     <label class="preset-label" for="preset">Start with a feeling</label><select id="preset">${options(Object.keys(PRESETS))}<option value="custom">Custom mix</option></select>
     <div class="layer-list">${LAYERS.map((layer) => {
       const names = {
@@ -136,6 +149,7 @@ app.innerHTML = `
 `;
 
 const landscape = new Landscape($("#landscape"));
+const feedback = new ChangeFeedback();
 let favorites: Favorite[] = [];
 try {
   favorites = readFavorites(localStorage);
@@ -160,12 +174,12 @@ function toast(message: string) {
   );
 }
 function openDialog(id: string) {
-  $<HTMLDialogElement>(id).showModal();
+  openPanel($<HTMLDialogElement>(id));
 }
 document
   .querySelectorAll<HTMLButtonElement>("[data-close]")
   .forEach(
-    (button) => (button.onclick = () => button.closest("dialog")!.close()),
+    (button) => (button.onclick = () => closePanel(button.closest("dialog")!)),
   );
 document.querySelectorAll<HTMLDialogElement>("dialog").forEach((dialog) =>
   dialog.addEventListener("click", (event) => {
@@ -177,19 +191,33 @@ document.querySelectorAll<HTMLDialogElement>("dialog").forEach((dialog) =>
       event.clientY < rect.top ||
       event.clientY > rect.bottom
     )
-      dialog.close();
+      closePanel(dialog);
+  }),
+);
+document.querySelectorAll<HTMLDialogElement>("dialog").forEach((dialog) =>
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closePanel(dialog);
   }),
 );
 
 function renderProgression(active = -1) {
-  $("#progression").innerHTML = progression(settings.key, settings.mood)
-    .map(
-      (chord, i) =>
-        `<div class="chord ${i === active ? "current" : ""}" ${i === active ? 'aria-current="true"' : ""}><strong>${chord.name}</strong><small>${chord.roman}</small></div>`,
-    )
-    .join("");
+  const applied = player.activeSettings;
+  const chords = progression(applied.key, applied.mood);
+  const container = $("#progression");
+  if (!container.children.length)
+    container.innerHTML = chords
+      .map(() => '<div class="chord"><strong></strong><small></small></div>')
+      .join("");
+  Array.from(container.children).forEach((element, i) => {
+    element.querySelector("strong")!.textContent = chords[i].name;
+    element.querySelector("small")!.textContent = chords[i].roman;
+    element.classList.toggle("current", i === active);
+    if (i === active) element.setAttribute("aria-current", "true");
+    else element.removeAttribute("aria-current");
+  });
   $("#track-subtitle").textContent =
-    `Canon in ${settings.key} ${settings.mood === "wistful" ? "minor" : "major"}`;
+    `Canon in ${applied.key} ${applied.mood === "wistful" ? "minor" : "major"}`;
 }
 function paintRanges() {
   document
@@ -201,11 +229,12 @@ function paintRanges() {
       );
     });
 }
-function setScene(scene: Scene) {
+function setScene(scene: Scene, animate = true, announce = true) {
+  const previous = document.body.dataset.scene;
   settings.scene = scene;
   document.body.dataset.scene = scene;
   document.documentElement.dataset.scene = scene;
-  landscape.setScene(scene);
+  landscape.setScene(scene, animate);
   player.update(settings);
   $("#scene-name").textContent = SCENE_INFO[scene].name;
   $("#scene-place").textContent = SCENE_INFO[scene].place;
@@ -218,6 +247,13 @@ function setScene(scene: Scene) {
         "aria-pressed",
         String(button.dataset.sceneOption === scene),
       ),
+    );
+  if (announce && previous && previous !== scene)
+    feedback.show(
+      SCENE_INFO[scene].name,
+      SCENE_INFO[scene].place,
+      "scene",
+      1300,
     );
 }
 function renderFavoriteState() {
@@ -288,12 +324,19 @@ player.onInterrupted = () => {
   renderTransport();
   toast("Audio was interrupted. Press Play to continue.");
 };
+player.onSettingsApplied = () => {
+  renderProgression();
+  updateStatus();
+};
 function rewind() {
   if (player.cycle === 0) return;
   player.seek(Math.max(0, player.cycle - 1));
   renderProgression();
   updateStatus();
-  toast("Back one variation.");
+  feedback.show(
+    "A moment worth revisiting",
+    "Returning to the previous variation.",
+  );
 }
 $("#rewind").onclick = rewind;
 for (const name of ["tempo", "density", "volume"] as const) {
@@ -304,18 +347,38 @@ for (const name of ["tempo", "density", "volume"] as const) {
     paintRanges();
     if (name !== "density") player.update(settings, false);
   };
-  if (name === "density")
-    $<HTMLInputElement>(`#${name}`).onchange = () => {
+  $<HTMLInputElement>(`#${name}`).onchange = () => {
+    if (name === "density") {
       player.update(settings, true);
-      renderProgression();
-      toast("Movement updated from the start of this variation.");
-    };
+      feedback.show(
+        settings.density > 60 ? "A little more movement" : "Room to breathe",
+        `Movement · ${settings.density}%`,
+      );
+    } else if (name === "tempo")
+      feedback.show(
+        "A different pace",
+        `${settings.tempo} beats per minute`,
+        "music",
+        950,
+      );
+    else
+      feedback.show(
+        settings.volume === 0
+          ? "A moment of quiet"
+          : `Volume · ${settings.volume}%`,
+        "Let the sound settle in.",
+        "music",
+        800,
+      );
+  };
 }
 $<HTMLSelectElement>("#key").onchange = (event) => {
   settings.key = (event.target as HTMLSelectElement).value as Key;
   player.update(settings, true);
-  renderProgression();
-  toast("New key, same familiar path.");
+  feedback.show(
+    `${settings.key} ${settings.mood === "wistful" ? "minor" : "major"}`,
+    "Same melody, a different light.",
+  );
 };
 $<HTMLSelectElement>("#mood").onchange = (event) => {
   settings.mood = (event.target as HTMLSelectElement).value as Mood;
@@ -325,16 +388,22 @@ $<HTMLSelectElement>("#mood").onchange = (event) => {
     $("#tempo-value").textContent = "56 bpm";
   }
   player.update(settings, true);
-  renderProgression();
   paintRanges();
-  toast("Mood updated from the start of this variation.");
+  feedback.show(
+    {
+      bright: "A brighter feeling",
+      dreamy: "Somewhere dreamier",
+      wistful: "A little wistful",
+    }[settings.mood],
+    `${settings.key} ${settings.mood === "wistful" ? "minor" : "major"} · ${settings.tempo} bpm`,
+  );
 };
 $("#scenes").onclick = () => openDialog("#scene-dialog");
 document.querySelectorAll<HTMLButtonElement>("[data-scene-option]").forEach(
   (button) =>
     (button.onclick = () => {
       setScene(button.dataset.sceneOption as Scene);
-      $<HTMLDialogElement>("#scene-dialog").close();
+      closePanel($<HTMLDialogElement>("#scene-dialog"));
     }),
 );
 $<HTMLInputElement>("#rotate").onchange = (event) => {
@@ -364,6 +433,7 @@ $<HTMLSelectElement>("#preset").onchange = (event) => {
   settings.mix = { ...PRESETS[value] };
   player.update(settings);
   renderMixer();
+  feedback.show(value, "The voices find their balance.", "mix", 950);
 };
 for (const layer of LAYERS) {
   $<HTMLInputElement>(`#toggle-${layer}`).onchange = (event) => {
@@ -375,11 +445,30 @@ for (const layer of LAYERS) {
     }
     player.update(settings);
     renderMixer();
+    feedback.show(
+      "A new balance",
+      settings.mix[layer] > 0
+        ? "Another voice joins the moment."
+        : "Leaving a little more space.",
+      "mix",
+      850,
+    );
   };
   $<HTMLInputElement>(`#layer-${layer}`).oninput = (event) => {
     settings.mix[layer] = Number((event.target as HTMLInputElement).value);
     player.update(settings);
     renderMixer();
+  };
+  $<HTMLInputElement>(`#layer-${layer}`).onchange = () => {
+    const name = $<HTMLInputElement>(`#layer-${layer}`)
+      .getAttribute("aria-label")!
+      .replace(" volume", "");
+    feedback.show(
+      `${name} · ${settings.mix[layer]}%`,
+      "The ensemble settles around you.",
+      "mix",
+      850,
+    );
   };
 }
 
@@ -434,7 +523,7 @@ function renderFavorites() {
     load.append(title, detail);
     load.onclick = () => {
       void loadSession(favorite.query);
-      $<HTMLDialogElement>("#saved-dialog").close();
+      closePanel($<HTMLDialogElement>("#saved-dialog"));
     };
     const remove = document.createElement("button");
     remove.className = "icon-button";
@@ -454,7 +543,7 @@ $("#saved").onclick = () => {
 };
 $("#new-session").onclick = () => {
   void loadSession(`?seed=${newSeed()}`);
-  $<HTMLDialogElement>("#saved-dialog").close();
+  closePanel($<HTMLDialogElement>("#saved-dialog"));
 };
 async function loadSession(query: string) {
   if (busy) return;
@@ -463,14 +552,17 @@ async function loadSession(query: string) {
     player.stopRecording();
     await player.pause();
     settings = parseSettings(query);
-    player.update(settings);
+    player.update(settings, true);
     player.seek(settings.cycle);
     history.replaceState(null, "", sessionUrl(settings, location.href));
     lastAutoCycle = settings.cycle;
     hasPlayed = false;
-    syncSettings();
+    syncSettings(true);
     renderTransport();
-    toast("Your composition is ready. Press Play to begin.");
+    feedback.show(
+      "An endless beginning",
+      "Your composition is ready. Press Play to begin.",
+    );
   } catch {
     toast("This session could not be loaded. Please try again.");
   } finally {
@@ -581,7 +673,7 @@ player.events.on((event) => {
     }
   }
 });
-function syncSettings() {
+function syncSettings(animate = false) {
   for (const name of ["tempo", "density", "volume"] as const) {
     $<HTMLInputElement>(`#${name}`).value = String(settings[name]);
     $(`#${name}-value`).textContent =
@@ -590,7 +682,7 @@ function syncSettings() {
   $<HTMLSelectElement>("#key").value = settings.key;
   $<HTMLSelectElement>("#mood").value = settings.mood;
   $<HTMLInputElement>("#rotate").checked = settings.rotate;
-  setScene(settings.scene);
+  setScene(settings.scene, animate, false);
   renderMixer();
   renderProgression();
   renderFavoriteState();
@@ -604,6 +696,7 @@ if (
   toast("This link uses a different composition version. Playback may differ.");
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
+    feedback.dispose();
     landscape.dispose();
     void player.dispose();
   });

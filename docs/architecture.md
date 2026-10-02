@@ -12,31 +12,35 @@ Six stages each last 2–6 cycles in a 24-cycle epoch. Durations are seeded; dir
 
 ## Module map
 
-| Module                                | Responsibility                                                |
-| ------------------------------------- | ------------------------------------------------------------- |
-| `music/random.ts`                     | Stable hash and seeded PRNG                                   |
-| `music/theory.ts`                     | Keys, scales, progression and frequencies                     |
-| `music/composer.ts`                   | Phrases, stages, 12-entry cache, delayed voices               |
-| `audio/synth.ts`                      | Timbres, layer gains, noise, reverb, compressor, soft limiter |
-| `audio/player.ts`                     | Look-ahead transport, interruption recovery, recording        |
-| `audio/timer.worker.ts`               | 25 ms wakeups, independent of visual frames                   |
-| `events.ts`                           | Typed music events                                            |
-| `visuals/landscape.ts`                | Procedural landscapes and thumbnails                          |
-| `visuals/engine.ts`                   | Music-reactive particles, resizing, motion preferences        |
-| `settings.ts`                         | Validated URLs, presets, seeds and favorites                  |
-| `main.ts`, `ui/icons.ts`, `style.css` | Semantic controls, persistence and responsive UI              |
+| Module                         | Responsibility                                                |
+| ------------------------------ | ------------------------------------------------------------- |
+| `music/random.ts`              | Stable hash and seeded PRNG                                   |
+| `music/theory.ts`              | Keys, scales, progression and frequencies                     |
+| `music/composer.ts`            | Phrases, stages, 12-entry cache, delayed voices               |
+| `audio/synth.ts`               | Timbres, layer gains, noise, reverb, compressor, soft limiter |
+| `audio/player.ts`              | Look-ahead transport, interruption recovery, recording        |
+| `audio/timer.worker.ts`        | 25 ms wakeups, independent of visual frames                   |
+| `events.ts`                    | Typed music events                                            |
+| `visuals/landscape.ts`         | Procedural landscapes and thumbnails                          |
+| `visuals/engine.ts`            | Music-reactive particles, scene dissolves, motion preferences |
+| `settings.ts`                  | Validated URLs, presets, seeds and favorites                  |
+| `main.ts`, `ui/*`, `style.css` | Semantic controls, persistence and responsive UI              |
 
 ## Scheduling and resources
 
-The audio clock is authoritative. A worker wakes every 25 ms; the player schedules 180 ms ahead using sixteenth-note ticks. Tempo changes affect future ticks. Visuals consume due events using output latency where available. After a stall, the next deadline moves forward without bursting overdue notes; the musical position is retained rather than tracking wall time.
+The audio clock is authoritative. A worker wakes every 25 ms; the player schedules 180 ms ahead using sixteenth-note ticks. Tempo glides over 900 ms using smoothstep interpolation, affecting future ticks. Visuals consume due events using output latency where available. After a stall, the next deadline moves forward without bursting overdue notes; the musical position is retained rather than tracking wall time.
 
-Pause suspends the context, preserving scheduled notes and tails. Key/mood/density changes and rewind clear active oscillators and reverb tails, then restart the variation. Browser/OS interruptions set the UI to paused and request a fresh gesture.
+Pause suspends the context, preserving scheduled notes and tails. Key/mood/density changes and rewind use an independent post-compressor gain: fade out over 260 ms, apply the latest requested settings at 300 ms, clear oscillators/reverb at silence, then fade in over 850 ms. Rapid edits update the pending target instead of creating timers. Live mix/master edits cannot overwrite pending tonal settings. Pause and browser interruption settle pending changes while silent; resume fades in over 550 ms. Browser/OS interruptions set the UI to paused and request a fresh gesture.
 
 - Cache ≤12 phrases, visual queue ≤256 events, particles ≤72.
 - Oscillators, envelopes and panners disconnect after release.
-- Scenery rasterizes on resize/scene change. Animation caps at 30 fps and pixel ratio 1.75.
+- Scenery rasterizes on resize/scene change. A single snapshot of the visible frame dissolves over 1.4 seconds; interrupted blends capture the current blend. Paused scenes draw only until the dissolve ends, then release the snapshot. Animation caps at 30 fps and pixel ratio 1.75.
 - Hidden tabs stop drawing; reduced motion keeps the canvas static. Audio does not depend on drawing.
 - Recording stops after five wall-clock minutes, including pauses, to bound memory.
+
+## Interaction motion
+
+`ui/motion.ts` owns one cancelable feedback timer and a progress animation. The landscape overlay never intercepts input; an `aria-live` status announces changes. Mixer feedback stays inside the native dialog. CSS handles entrance and hover motion; native dialog exits retain focus trapping until the 180 ms animation completes. Reduced motion uses static compact feedback, immediate scene/panel changes and no decorative animation; audio smoothing remains active.
 
 ## Tradeoffs
 

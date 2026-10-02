@@ -13,6 +13,8 @@ interface Particle {
 export class Landscape {
   private context: CanvasRenderingContext2D;
   private background = document.createElement("canvas");
+  private previous = document.createElement("canvas");
+  private sceneChangedAt?: number;
   private frame = 0;
   private width = 0;
   private height = 0;
@@ -47,11 +49,25 @@ export class Landscape {
     this.resize();
   }
 
-  setScene(scene: Scene) {
+  setScene(scene: Scene, animate = true) {
+    if (scene === this.scene) return;
+    if (
+      animate &&
+      !this.reduced.matches &&
+      !document.hidden &&
+      this.width > 0
+    ) {
+      this.previous.width = this.canvas.width;
+      this.previous.height = this.canvas.height;
+      // Capture the current blend, so another click never jumps backwards.
+      this.previous.getContext("2d")!.drawImage(this.canvas, 0, 0);
+      this.sceneChangedAt = performance.now();
+    } else this.finishSceneChange();
     this.scene = scene;
     this.particles = [];
     this.paintBackground();
     this.render(this.clock);
+    this.motionChanged();
   }
   setPlaying(playing: boolean) {
     this.playing = playing;
@@ -75,6 +91,7 @@ export class Landscape {
   }
 
   private resize() {
+    this.finishSceneChange();
     const bounds = this.canvas.getBoundingClientRect();
     this.width = bounds.width;
     this.height = bounds.height;
@@ -98,21 +115,32 @@ export class Landscape {
   }
   private motionChanged = () => {
     cancelAnimationFrame(this.frame);
-    if (this.playing && !this.reduced.matches && !document.hidden)
+    if (this.reduced.matches || document.hidden) this.finishSceneChange();
+    if (
+      (this.playing || this.sceneChangedAt !== undefined) &&
+      !this.reduced.matches &&
+      !document.hidden
+    )
       this.frame = requestAnimationFrame(this.animate);
     else this.render(this.clock);
   };
+  private finishSceneChange() {
+    this.sceneChangedAt = undefined;
+    this.previous.width = 0;
+    this.previous.height = 0;
+  }
   private visibilityChanged = () => {
     this.started = performance.now() - this.clock;
     this.motionChanged();
   };
   private animate = (time: number) => {
     if (time - this.lastFrame >= 1000 / 30) {
-      this.clock = time - this.started;
+      if (this.playing) this.clock = time - this.started;
       this.lastFrame = time;
       this.render(this.clock);
     }
-    this.frame = requestAnimationFrame(this.animate);
+    if (this.playing || this.sceneChangedAt !== undefined)
+      this.frame = requestAnimationFrame(this.animate);
   };
 
   private render(time: number) {
@@ -121,6 +149,18 @@ export class Landscape {
       h = this.height;
     if (!w || !h) return;
     ctx.drawImage(this.background, 0, 0, w, h);
+    if (this.sceneChangedAt !== undefined) {
+      const progress = Math.min(
+        1,
+        (performance.now() - this.sceneChangedAt) / 1400,
+      );
+      if (progress >= 1) this.finishSceneChange();
+      else {
+        ctx.globalAlpha = 1 - progress * progress * (3 - 2 * progress);
+        ctx.drawImage(this.previous, 0, 0, w, h);
+        ctx.globalAlpha = 1;
+      }
+    }
     if (this.reduced.matches) return;
     if (this.playing) {
       // Very subtle tonal wash and bass swell; no flashing or abrupt light changes.

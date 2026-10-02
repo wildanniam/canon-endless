@@ -1337,7 +1337,9 @@ input[type="range"]::-moz-range-track {
   color: var(--ink);
   border-bottom: 1px solid var(--line);
 }
-.dock #voice-label { color: var(--muted); }
+.dock #voice-label {
+  color: var(--muted);
+}
 .dock .footnote {
   margin: 0;
   padding: 8px 24px 11px;
@@ -1345,8 +1347,12 @@ input[type="range"]::-moz-range-track {
   color: var(--muted);
 }
 @media (max-width: 700px) {
-  .dock .session-status { padding: 10px 17px; }
-  .dock .footnote { padding: 5px 17px 11px; }
+  .dock .session-status {
+    padding: 10px 17px;
+  }
+  .dock .footnote {
+    padding: 5px 17px 11px;
+  }
 }
 :root {
   --muted: #596455;
@@ -1366,4 +1372,468 @@ kbd {
 }
 :root[data-scene="aurora"] {
   background: #112b2c;
+}
+
+/* One quiet transition language, from the scenery down to each control. */
+:root {
+  --motion-ease: cubic-bezier(0.22, 0.68, 0.22, 1);
+  --veil-rgb: 245, 241, 231;
+}
+body[data-scene="aurora"] {
+  --veil-rgb: 17, 43, 44;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.masthead,
+.introduction,
+.scene-caption {
+  transition:
+    color 0.85s ease,
+    opacity 0.45s ease,
+    transform 0.6s var(--motion-ease);
+}
+.intro-copy,
+.eyebrow {
+  transition: color 0.85s ease;
+}
+.introduction {
+  animation: welcome-in 0.85s var(--motion-ease) backwards;
+}
+.instrument {
+  animation: instrument-in 0.7s 0.15s var(--motion-ease) backwards;
+}
+.icon-button,
+.text-button,
+.share-button,
+.scene-button,
+.solid-button,
+.scene-option,
+.play-button {
+  transition:
+    background-color 0.22s,
+    color 0.5s,
+    opacity 0.2s,
+    transform 0.25s var(--motion-ease),
+    box-shadow 0.25s;
+}
+.icon-button:hover:not(:disabled),
+.text-button:hover:not(:disabled),
+.share-button:hover {
+  transform: translateY(-2px);
+}
+.icon-button:active,
+.text-button:active,
+.share-button:active,
+.scene-button:active,
+.solid-button:active {
+  transform: translateY(0) scale(0.97);
+}
+.play-button {
+  box-shadow: 0 0 0 0 #53634a00;
+}
+.play-button:hover:not(:disabled) {
+  transform: scale(1.045);
+  box-shadow: 0 0 0 7px #53634a0a;
+}
+.play-button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.scene-option:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 14px #344a3310;
+}
+.scene-option img {
+  transition: transform 0.7s var(--motion-ease);
+}
+.scene-option:hover img {
+  transform: scale(1.035);
+}
+.chord {
+  transition:
+    background-color 0.55s ease,
+    color 0.55s ease,
+    transform 0.5s var(--motion-ease);
+}
+.chord.current {
+  transform: translateY(-2px);
+}
+.chord::after {
+  content: "";
+  width: 3px;
+  height: 3px;
+  background: currentColor;
+  border-radius: 50%;
+  position: absolute;
+  bottom: 3px;
+  opacity: 0;
+  transform: scale(0.3);
+  transition:
+    opacity 0.4s,
+    transform 0.5s;
+}
+.chord.current::after {
+  opacity: 1;
+  transform: scale(1);
+}
+dialog[open] {
+  animation: panel-in 0.28s var(--motion-ease) both;
+}
+dialog[open]::backdrop {
+  animation: backdrop-in 0.25s ease both;
+}
+dialog.is-closing::backdrop {
+  animation: backdrop-out 0.18s ease both;
+}
+
+.change-surface {
+  position: fixed;
+  z-index: 2;
+  inset: 0 0 auto;
+  height: calc(100svh - 330px);
+  min-height: 300px;
+  max-height: 66svh;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.42s ease,
+    visibility 0.42s;
+  color: var(--scene-ink);
+}
+.change-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--veil-rgb), 0) 3%,
+    rgba(var(--veil-rgb), 0.65) 35%,
+    rgba(var(--veil-rgb), 0.78) 62%,
+    rgba(var(--veil-rgb), 0) 100%
+  );
+}
+.change-message {
+  position: absolute;
+  top: 42%;
+  left: 70%;
+  width: min(430px, 42vw);
+  transform: translate(-50%, -30%) translateY(12px);
+  text-align: center;
+  transition: transform 0.65s var(--motion-ease);
+}
+.change-lines {
+  display: block;
+  margin: 0 auto 17px;
+  overflow: visible;
+}
+.change-lines path {
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  opacity: 0.5;
+}
+.change-lines path:nth-child(2) {
+  opacity: 0.35;
+}
+.change-lines path:nth-child(3) {
+  opacity: 0.2;
+}
+.change-eyebrow {
+  margin: 0 0 10px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.change-title {
+  font:
+    italic 400 clamp(29px, 3vw, 43px)/1.1 "Cormorant Garamond",
+    serif;
+  letter-spacing: -0.8px;
+  margin: 0;
+  text-wrap: balance;
+}
+.change-detail {
+  font-size: 11px;
+  margin: 12px 0 0;
+  line-height: 1.6;
+}
+.change-track {
+  width: 58px;
+  height: 1px;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  opacity: 0.65;
+  margin: 22px auto 0;
+  overflow: hidden;
+}
+#change-progress {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: currentColor;
+  transform-origin: left center;
+}
+body[data-changing] .change-surface {
+  opacity: 1;
+  visibility: visible;
+}
+body[data-changing] .change-message {
+  transform: translate(-50%, -30%) translateY(0);
+}
+body[data-changing] .change-lines path {
+  animation: melodic-line 1.35s var(--motion-ease) both;
+}
+body[data-changing] .change-lines path:nth-child(2) {
+  animation-delay: 0.09s;
+}
+body[data-changing] .change-lines path:nth-child(3) {
+  animation-delay: 0.18s;
+}
+body[data-changing] .introduction {
+  opacity: 0.25;
+}
+body[data-changing] .scene-caption {
+  opacity: 0;
+  transform: translateY(4px);
+}
+body[data-changing="mix"]:has(#mixer-dialog[open]) .change-surface {
+  opacity: 0;
+}
+.dialog-change {
+  position: absolute;
+  top: 24px;
+  left: 32px;
+  right: 78px;
+  min-height: 87px;
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  padding: 8px 0;
+  background: var(--paper);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(7px);
+  transition:
+    opacity 0.22s,
+    visibility 0.22s,
+    transform 0.3s var(--motion-ease);
+}
+.dialog-change-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  flex-shrink: 0;
+  color: var(--moss);
+}
+.dialog-change > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.dialog-change small {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: var(--muted);
+}
+.dialog-change strong {
+  font:
+    400 27px/1.1 "Cormorant Garamond",
+    serif;
+  letter-spacing: -0.5px;
+}
+.dialog-change > div > span {
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+body[data-changing="mix"] .dialog-change {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+@keyframes welcome-in {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes instrument-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes backdrop-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes melodic-line {
+  from {
+    stroke-dashoffset: 200;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (max-width: 700px) {
+  .change-surface {
+    height: 355px;
+    max-height: 48svh;
+    min-height: 260px;
+  }
+  .change-message {
+    top: 39%;
+    left: 50%;
+    width: calc(100% - 52px);
+  }
+  .change-title {
+    font-size: 35px;
+  }
+  body[data-changing] .introduction {
+    opacity: 0;
+  }
+  #mixer-dialog .dialog-heading {
+    min-height: 96px;
+  }
+  .change-lines {
+    width: 108px;
+    height: 45px;
+    margin-bottom: 12px;
+  }
+  .change-detail {
+    font-size: 10px;
+  }
+  .change-track {
+    margin-top: 17px;
+  }
+  .dialog-change {
+    top: 19px;
+    left: 20px;
+    right: 58px;
+    min-height: 100px;
+    gap: 11px;
+  }
+  .dialog-change-mark {
+    width: 36px;
+    height: 36px;
+  }
+  .dialog-change-mark svg {
+    width: 26px;
+  }
+  .dialog-change strong {
+    font-size: 23px;
+  }
+  .dialog-change > div > span {
+    font-size: 9px;
+  }
+  .chord::after {
+    bottom: -3px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .change-veil,
+  .change-lines,
+  .change-track {
+    display: none;
+  }
+  .change-surface {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    top: 92px;
+  }
+  .change-message,
+  body[data-changing] .change-message {
+    position: static;
+    transform: none;
+    width: fit-content;
+    max-width: calc(100% - 40px);
+    margin: 0 auto;
+    padding: 10px 18px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .change-eyebrow {
+    display: none;
+  }
+  .change-title {
+    font:
+      500 13px/1.4 "DM Sans Variable",
+      sans-serif;
+    letter-spacing: 0;
+  }
+  .change-detail {
+    margin-top: 3px;
+    font-size: 10px;
+  }
+  body[data-changing] .introduction {
+    opacity: 1;
+  }
+  body[data-changing] .scene-caption {
+    opacity: 1;
+    transform: none;
+  }
+  .icon-button:hover,
+  .text-button:hover,
+  .share-button:hover,
+  .scene-option:hover,
+  .play-button:hover,
+  .chord.current,
+  .scene-option:hover img {
+    transform: none !important;
+  }
 }

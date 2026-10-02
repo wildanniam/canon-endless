@@ -19,14 +19,21 @@ export class Player {
   private audibleCycle = 0;
   private running = false;
   private starting = false;
+  private pendingSettings?: Settings;
+  private pendingCycle?: number;
+  private changeAt?: number;
+  private tempoFrom: number;
+  private tempoStarted = 0;
   private recorder?: MediaRecorder;
   private recordingOutput?: MediaStreamAudioDestinationNode;
   private recordingTimeout?: ReturnType<typeof setTimeout>;
   onRecordingEnd?: (blob: Blob) => void;
   onInterrupted?: () => void;
+  onSettingsApplied?: () => void;
 
   constructor(private settings: Settings) {
     this.settings = structuredClone(settings);
+    this.tempoFrom = settings.tempo;
     this.tick = settings.cycle * TICKS_PER_CYCLE;
     this.audibleCycle = settings.cycle;
   }
@@ -36,6 +43,9 @@ export class Player {
   }
   get cycle() {
     return this.audibleCycle;
+  }
+  get activeSettings() {
+    return structuredClone(this.settings);
   }
   get recording() {
     return (
@@ -51,6 +61,11 @@ export class Player {
       queuedEvents: this.queue.length,
       cachedPhrases: this.canon.size,
       activeOscillators: this.bank?.activeNodes || 0,
+      transitioning: this.pendingSettings !== undefined,
+      key: this.settings.key,
+      mood: this.settings.mood,
+      density: this.settings.density,
+      tempo: this.tempoAt(this.context?.currentTime || 0),
     };
   }
   get level(): number {
@@ -83,16 +98,19 @@ export class Player {
             this.running = false;
             this.timer?.postMessage(false);
             cancelAnimationFrame(this.frame);
+            this.commitChange();
             if (this.recorder?.state === "recording") this.recorder.pause();
             this.onInterrupted?.();
           }
         };
       }
+      this.bank!.fadeTo(0, 0);
       await this.context.resume();
       if (this.context.state !== "running")
         throw new Error("Audio could not start. Please press Play again.");
       this.nextTime = Math.max(this.nextTime, this.context.currentTime + 0.06);
       this.running = true;
+      this.bank!.fadeTo(1, 0.55);
       if (this.recorder?.state === "paused") this.recorder.resume();
       this.timer!.postMessage(true);
       this.schedule();
@@ -108,34 +126,114 @@ export class Player {
     cancelAnimationFrame(this.frame);
     if (this.recorder?.state === "recording") this.recorder.pause();
     await this.context?.suspend();
+    this.commitChange();
   }
 
   update(settings: Settings, restart = false) {
-    this.settings = structuredClone(settings);
-    this.bank?.mix(settings.mix, settings.volume, settings.mood === "dreamy");
-    this.bank?.scene(settings.scene);
-    if (restart) this.seek(this.cycle);
+    const next = structuredClone(settings);
+    if (restart) {
+      if (this.running && this.context)
+        this.queueChange(next, this.pendingCycle ?? this.cycle);
+      else {
+        this.pendingSettings = undefined;
+        this.pendingCycle = undefined;
+        this.changeAt = undefined;
+        this.applySettings(next);
+        this.resetPosition(this.cycle);
+        this.bank?.fadeTo(1, 0);
+        this.onSettingsApplied?.();
+      }
+      return;
+    }
+    // A volume/scene update must never prematurely apply a pending tonal change
+    // or an uncommitted density slider drag.
+    const realtime = {
+      tempo: next.tempo,
+      volume: next.volume,
+      mix: next.mix,
+      scene: next.scene,
+      rotate: next.rotate,
+    };
+    if (this.pendingSettings)
+      this.pendingSettings = { ...this.pendingSettings, ...realtime };
+    this.applySettings({ ...this.settings, ...realtime });
   }
 
   seek(cycle: number) {
+    const target = Math.max(0, Math.floor(cycle));
+    if (this.running && this.context)
+      this.queueChange(this.pendingSettings || this.settings, target);
+    else this.resetPosition(target);
+  }
+
+  private tempoAt(time: number) {
+    const progress = Math.min(1, Math.max(0, (time - this.tempoStarted) / 0.9));
+    const eased = progress * progress * (3 - 2 * progress);
+    return this.tempoFrom + (this.settings.tempo - this.tempoFrom) * eased;
+  }
+
+  private applySettings(next: Settings) {
+    if (next.tempo !== this.settings.tempo) {
+      this.tempoFrom = this.running
+        ? this.tempoAt(this.context!.currentTime)
+        : next.tempo;
+      this.tempoStarted = this.context?.currentTime || 0;
+    }
+    this.settings = structuredClone(next);
+    this.bank?.mix(next.mix, next.volume, next.mood === "dreamy");
+    this.bank?.scene(next.scene);
+  }
+
+  private queueChange(next: Settings, cycle: number) {
+    this.pendingSettings = structuredClone(next);
+    this.pendingCycle = cycle;
+    // Coalesce rapid input into the same fade-out; do not schedule stale timers.
+    if (this.changeAt === undefined) {
+      this.changeAt = this.context!.currentTime + 0.3;
+      this.bank!.fadeTo(0, 0.26);
+    }
+  }
+
+  private commitChange() {
+    if (!this.pendingSettings) return;
+    const next = this.pendingSettings;
+    const cycle = this.pendingCycle ?? this.cycle;
+    this.pendingSettings = undefined;
+    this.pendingCycle = undefined;
+    this.changeAt = undefined;
+    this.applySettings(next);
+    this.resetPosition(cycle);
+    this.bank?.fadeTo(1, this.running ? 0.85 : 0);
+    this.onSettingsApplied?.();
+  }
+
+  private resetPosition(cycle: number) {
     this.audibleCycle = Math.max(0, Math.floor(cycle));
     this.tick = this.audibleCycle * TICKS_PER_CYCLE;
     this.queue = [];
     this.bank?.silence();
     this.nextTime = (this.context?.currentTime || 0) + 0.06;
-    this.schedule();
   }
 
   private schedule() {
     if (!this.running || !this.context || !this.bank) return;
+    if (
+      this.changeAt !== undefined &&
+      this.context.currentTime >= this.changeAt
+    )
+      this.commitChange();
     // Recover from system sleep without scheduling a burst of overdue notes.
     if (this.nextTime < this.context.currentTime - 0.15) {
       this.nextTime = this.context.currentTime + 0.06;
       this.queue = [];
     }
-    const tickSeconds = 60 / this.settings.tempo / 4;
     const chords = progression(this.settings.key, this.settings.mood);
-    while (this.nextTime < this.context.currentTime + 0.18) {
+    const horizon = Math.min(
+      this.context.currentTime + 0.18,
+      this.changeAt ?? Infinity,
+    );
+    while (this.nextTime < horizon) {
+      const tickSeconds = 60 / this.tempoAt(this.nextTime) / 4;
       const cycle = Math.floor(this.tick / TICKS_PER_CYCLE);
       const local = this.tick % TICKS_PER_CYCLE;
       const chordIndex = Math.floor(local / 8);
