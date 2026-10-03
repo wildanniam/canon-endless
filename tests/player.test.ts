@@ -28,6 +28,8 @@ vi.mock("../src/audio/synth", () => ({
     silence = vi.fn();
     mix = vi.fn();
     scene = vi.fn();
+    setStyle = vi.fn();
+    drum = vi.fn();
     note = vi.fn();
     dispose = vi.fn();
     activeNodes = 0;
@@ -75,6 +77,21 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("smooth transport changes", () => {
+  it("keeps a style switch pending through live mixer edits, then commits the final style", async () => {
+    const classic = parseSettings("");
+    const player = new Player(classic);
+    await player.play();
+    const lofi = parseSettings("?style=lofi");
+    player.update(lofi, true);
+    player.update({ ...lofi, volume: 34 });
+    expect(player.activeSettings.style).toBe("classic");
+    advance(0.31);
+    expect(player.activeSettings).toMatchObject({ style: "lofi", volume: 34 });
+    player.update(classic, true);
+    advance(0.62);
+    expect(player.activeSettings.style).toBe("classic");
+  });
+
   it("fades the old harmony out before resetting and fading in the new one", async () => {
     const settings = parseSettings("");
     const player = new Player(settings);

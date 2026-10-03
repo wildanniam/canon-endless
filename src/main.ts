@@ -6,6 +6,7 @@ import "./style.css";
 import { Player } from "./audio/player";
 import { Landscape } from "./visuals/engine";
 import { SCENE_INFO, thumbnail } from "./visuals/landscape";
+import type { MusicStyle } from "./music/composer";
 import { STAGES, stageAt } from "./music/composer";
 import { KEYS, progression } from "./music/theory";
 import type { Key, Mood } from "./music/theory";
@@ -89,6 +90,7 @@ app.innerHTML = `
             ${range("volume", "Volume", settings.volume, 0, 100, "%")}
             <div class="select-control"><label for="key">Key</label><select id="key">${options(Object.keys(KEYS))}</select></div>
             <div class="select-control"><label for="mood">Mood</label><select id="mood"><option value="bright">Bright</option><option value="dreamy">Dreamy</option><option value="wistful">Wistful</option></select></div>
+            <div class="select-control"><label for="style">Style</label><select id="style"><option value="classic">Classic</option><option value="lofi">Lo-fi</option></select></div>
           </div>
           <div class="dock-footer">
             <button id="scenes" class="scene-button" aria-haspopup="dialog"><img id="scene-preview" alt=""/><span><span class="button-overline">Your surroundings</span><strong id="scene-name">Stillwater</strong></span>${icon("down", 16)}</button>
@@ -112,8 +114,10 @@ app.innerHTML = `
     <label class="switch-row"><span><strong>Let the scenery wander</strong><small>Move to a new scene every four variations.</small></span><input id="rotate" type="checkbox" role="switch"/></label>
   </dialog>
   <dialog id="mixer-dialog" aria-labelledby="mixer-dialog-title">
+    <div class="mixer-heading">
     <div class="dialog-heading"><div><p class="eyebrow">Make a little space</p><h2 id="mixer-dialog-title">Your ensemble.</h2></div><button class="icon-button" data-close aria-label="Close ensemble">${icon("close")}</button></div>
     <div class="dialog-change" aria-hidden="true"><span class="dialog-change-mark">${logo}</span><div><small data-change-label></small><strong data-change-title></strong><span data-change-detail></span></div></div>
+    </div>
     <label class="preset-label" for="preset">Start with a feeling</label><select id="preset">${options(Object.keys(PRESETS))}<option value="custom">Custom mix</option></select>
     <div class="layer-list">${LAYERS.map((layer) => {
       const names = {
@@ -123,6 +127,8 @@ app.innerHTML = `
         pad: ["Warm strings", "A long, gentle breath"],
         pizzicato: ["Plucked strings", "Small, playful footsteps"],
         nature: ["Nature air", "A soft, scene-colored wash of wind"],
+        beat: ["Soft drums", "A laid-back kick, snare and hi-hat"],
+        vinyl: ["Vinyl texture", "A little hiss and a gentle crackle"],
       };
       return `<div class="layer-row"><label class="layer-label" for="toggle-${layer}"><strong>${names[layer][0]}</strong><small>${names[layer][1]}</small></label><input id="toggle-${layer}" type="checkbox" role="switch" aria-label="Enable ${names[layer][0]}"/><input id="layer-${layer}" type="range" min="0" max="100" aria-label="${names[layer][0]} volume"/><output id="value-${layer}" for="layer-${layer}"></output></div>`;
     }).join("")}</div>
@@ -138,7 +144,7 @@ app.innerHTML = `
     <p>Eight chords. Three voices. A melody that finds a new path each time.</p>
     <p>Endless Canon takes the harmony of Pachelbel’s Canon in D and composes new phrases as you listen. Each voice echoes the one before it, a full four-bar cycle later. The music grows from calm to flowing, lively to playful, before finding room to breathe again.</p>
     <div class="about-facts"><span>Made in your browser</span><span>No account. No tracking.</span><span>Headphones welcome</span></div>
-    <p>Your session is a seed. Save or share it to revisit the same composition and settings, starting from the current variation. Changes to key, mood or movement begin that variation again.</p>
+    <p>Your session is a seed. Save or share it to revisit the same composition and settings, starting from the current variation. Switch Style to Lo-fi for warm electric piano, swung phrases, soft drums and vinyl texture. Changes to style, key, mood or movement begin that variation again.</p>
     <p class="dialog-note">Keyboard: Space to play or pause, ← to rewind, Z for zen mode, Escape to return. Controls keep their normal keyboard behavior. Recordings contain only the generated music, never your microphone.</p>
     <a class="source-link" href="https://github.com/wildanniam/canon-endless" target="_blank" rel="noopener noreferrer">Made with care · View the source ${icon("arrow", 14)}</a>
   </dialog>
@@ -217,7 +223,7 @@ function renderProgression(active = -1) {
     else element.removeAttribute("aria-current");
   });
   $("#track-subtitle").textContent =
-    `Canon in ${applied.key} ${applied.mood === "wistful" ? "minor" : "major"}`;
+    `${applied.style === "lofi" ? "Lo-fi Canon" : "Canon"} in ${applied.key} ${applied.mood === "wistful" ? "minor" : "major"}`;
 }
 function paintRanges() {
   document
@@ -398,6 +404,28 @@ $<HTMLSelectElement>("#mood").onchange = (event) => {
     `${settings.key} ${settings.mood === "wistful" ? "minor" : "major"} · ${settings.tempo} bpm`,
   );
 };
+function chooseStyle(style: MusicStyle, kind: "music" | "mix" = "music") {
+  settings.style = style;
+  settings.mix = {
+    ...PRESETS[style === "lofi" ? "Lo-fi afternoon" : "Classic quartet"],
+  };
+  settings.tempo = style === "lofi" ? 68 : 72;
+  $<HTMLSelectElement>("#style").value = style;
+  $<HTMLInputElement>("#tempo").value = String(settings.tempo);
+  $("#tempo-value").textContent = `${settings.tempo} bpm`;
+  player.update(settings, true);
+  renderMixer();
+  paintRanges();
+  feedback.show(
+    style === "lofi" ? "A lo-fi afternoon" : "Back to the classics",
+    style === "lofi"
+      ? "Warm keys, a soft beat, nowhere to rush."
+      : "Three familiar voices, unfolding.",
+    kind,
+  );
+}
+$<HTMLSelectElement>("#style").onchange = (event) =>
+  chooseStyle((event.target as HTMLSelectElement).value as MusicStyle);
 $("#scenes").onclick = () => openDialog("#scene-dialog");
 document.querySelectorAll<HTMLButtonElement>("[data-scene-option]").forEach(
   (button) =>
@@ -430,6 +458,10 @@ $("#mixer").onclick = () => {
 $<HTMLSelectElement>("#preset").onchange = (event) => {
   const value = (event.target as HTMLSelectElement).value;
   if (!PRESETS[value]) return;
+  if (value === "Lo-fi afternoon") {
+    chooseStyle("lofi", "mix");
+    return;
+  }
   settings.mix = { ...PRESETS[value] };
   player.update(settings);
   renderMixer();
@@ -681,6 +713,7 @@ function syncSettings(animate = false) {
   }
   $<HTMLSelectElement>("#key").value = settings.key;
   $<HTMLSelectElement>("#mood").value = settings.mood;
+  $<HTMLSelectElement>("#style").value = settings.style;
   $<HTMLInputElement>("#rotate").checked = settings.rotate;
   setScene(settings.scene, animate, false);
   renderMixer();

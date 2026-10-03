@@ -2,7 +2,7 @@
 
 ## Automated checks
 
-`npm run check` passed: ESLint, strict TypeScript, **29 Vitest tests**, Vite production build.
+`npm run check` passed: ESLint, strict TypeScript, **36 Vitest tests**, Vite production build.
 
 - Major/minor progressions and transposition across seven keys.
 - Chord membership on strong beats, scale/range, positive duration and 64-tick coverage across 7 keys × 3 moods × 3 movement levels × 48 cycles.
@@ -76,6 +76,29 @@ Repeat `npm ci && npm run check`, start `npm run dev`, and test the interactions
 - Human Canon recognition, long-session musical quality, strict counterpoint, original-phrase corpus comparison, or no-repeat guarantees.
 - Long recordings, every browser codec, cross-browser background/sleep behavior.
 
+
+## Lo-fi and living landscapes
+
+Seven additional tests cover Classic snapshot compatibility and style-aware caching, a new lo-fi v1 snapshot, chord/scale/range boundaries and rests across 7 keys × 3 moods × 3 densities × 24 cycles, exact delayed voices, swing totals, drum placement, URL defaults/round trips and style changes with concurrent mix edits.
+
+Chromium development checks confirmed audible lo-fi output; rapid Classic/Lo-fi changes settle on the final style. All six canvases changed between time-separated captures while playing, then became byte-identical while paused and under reduced motion. Mixer feedback remained visible when scrolling to vinyl. Shared URLs retained style and vinyl level and reloaded without autoplay. Active oscillator/buffer sources at the six scene checkpoints ranged from 38 to 60; this short run is not a leak/endurance proof.
+
+Six ten-second stereo OfflineAudioContext renders used the production synthesizer at master 100% (except mute):
+
+| Render | Peak | RMS |
+|---|---:|---:|
+| Lo-fi ensemble | 0.268213 | 0.033431 |
+| Drums only | 0.294690 | 0.023390 |
+| Vinyl, with disabled musical voices scheduled | 0.088624 | 0.002991 |
+| Vinyl control, without musical voices scheduled | 0.088624 | 0.002991 |
+| Master muted | 0 | 0 |
+| All layers at 100% | 0.423896 | 0.075605 |
+
+No clipped or nonfinite samples. The matching vinyl/control outputs verified that disabled musical voices did not leak during startup. These measurements establish signal behavior, not subjective musical quality.
+
+The final production preview passed style selection, mixer scrolling, Classic restoration and reduced-motion checks at 1440/390/320 px. Axe reported zero violations in the checked stable aurora desktop, desktop mixer, blossom mobile, mobile mixer and Classic 320 px states. No runtime exceptions or failed requests occurred.
+
+A short desktop forest sample captured 167 animation callbacks: mean 0.144 ms, p95 0.600 ms. These are callback CPU timings, including callbacks that skip drawing to enforce the 30 fps cap; they exclude GPU presentation and do not establish sustained mobile frame rate.
 
 ## GitHub Pages deployment
 

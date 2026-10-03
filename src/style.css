@@ -360,8 +360,8 @@ h1 em {
 }
 .controls-row {
   display: grid;
-  grid-template-columns: 1.2fr 1.2fr 1.2fr 0.6fr 0.8fr;
-  gap: 30px;
+  grid-template-columns: 1fr 1fr 1fr 0.55fr 0.75fr 0.8fr;
+  gap: 22px;
   padding: 20px 28px 24px;
   border-top: 1px solid var(--line);
 }
@@ -1835,5 +1835,46 @@ body[data-changing="mix"] .dialog-change {
   .chord.current,
   .scene-option:hover img {
     transform: none !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .select-control {
+    grid-column: span 2;
+    display: block;
+    min-width: 0;
+  }
+  .select-control label {
+    display: block;
+    margin-bottom: 2px;
+  }
+  .select-control select {
+    width: 100%;
+    min-height: 36px;
+  }
+}
+
+.mixer-heading {
+  position: sticky;
+  top: -32px;
+  z-index: 2;
+  background: var(--paper);
+  display: flow-root;
+  padding-top: 32px;
+  margin-top: -32px;
+}
+.mixer-heading .dialog-change {
+  left: 0;
+  right: 46px;
+}
+@media (max-width: 700px) {
+  .mixer-heading {
+    top: -24px;
+    padding-top: 24px;
+    margin-top: -24px;
+  }
+  .mixer-heading .dialog-change {
+    left: 0;
+    right: 38px;
   }
 }

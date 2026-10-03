@@ -51,3 +51,9 @@ User feedback: music settings and surroundings currently change too abruptly; ad
 - Scenery: 1.4-second crossfade, including while paused. Rapid scene changes start from the current blended image, with one retained snapshot. The scene returns to rest after the transition.
 - Panels/buttons: restrained 180–250 ms opacity/translation, stable native dialog focus, no bouncing. Initial entrance happens once.
 - Reduced motion: no scenery crossfade, transform choreography or animated linework. A compact static setting notification remains; audio smoothing is unchanged.
+
+## Lo-fi and living landscapes — 2026-10-03
+
+Extend the listening instrument, retaining its illustrated sleeve and calm hierarchy. Add a clearly labeled Style selector beside key/mood: Classic and Lo-fi. Lo-fi opens at 68 bpm with warm electric-piano voices, space between syncopated phrases, swung eighths, soft drums and adjustable vinyl. Style changes use the existing audio/overlay transition; shared sessions preserve them. Classic v1 phrases remain unchanged.
+
+Make the environment visibly alive while listening: drifting sky haze and flying birds, shimmering water, wind through foreground reeds, forest light and fireflies, falling blossom petals, flowing aurora curtains, and layered rain with splashes. Keep motion away from the title when possible, never move the controls, and use gentle beat/note response instead of flashing. Cached landscape geometry remains; bounded scene effects run at the existing 30 fps limit. Pause freezes the whole scene, reduced motion renders a still, and hidden tabs stop drawing. Verify all six scenes on desktop/mobile and compare time-separated canvas frames.

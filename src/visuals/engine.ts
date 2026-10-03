@@ -1,7 +1,7 @@
 import { renderLandscape } from "./landscape";
 import type { Scene } from "../settings";
 import type { MusicEvent } from "../events";
-import { random } from "../music/random";
+import { renderLiving } from "./living";
 
 interface Particle {
   x: number;
@@ -28,15 +28,6 @@ export class Landscape {
   private clock = 0;
   private chord = 0;
   private pulse = 0;
-  private specks = Array.from({ length: 42 }, (_, i) => {
-    const rng = random(`speck-${i}`);
-    return {
-      x: rng(),
-      y: rng(),
-      speed: 0.3 + rng(),
-      phase: rng() * Math.PI * 2,
-    };
-  });
 
   constructor(private canvas: HTMLCanvasElement) {
     const context = canvas.getContext("2d");
@@ -75,6 +66,7 @@ export class Landscape {
     this.motionChanged();
   }
   event(event: MusicEvent) {
+    if (event.kind === "beat") this.pulse = Math.max(this.pulse, 0.7);
     if (event.kind === "chord") {
       this.chord = event.chord || 0;
       this.pulse = 1;
@@ -111,6 +103,7 @@ export class Landscape {
       this.width,
       this.height,
       this.scene,
+      true,
     );
   }
   private motionChanged = () => {
@@ -149,52 +142,20 @@ export class Landscape {
       h = this.height;
     if (!w || !h) return;
     ctx.drawImage(this.background, 0, 0, w, h);
-    if (this.sceneChangedAt !== undefined) {
-      const progress = Math.min(
-        1,
-        (performance.now() - this.sceneChangedAt) / 1400,
-      );
-      if (progress >= 1) this.finishSceneChange();
-      else {
-        ctx.globalAlpha = 1 - progress * progress * (3 - 2 * progress);
-        ctx.drawImage(this.previous, 0, 0, w, h);
-        ctx.globalAlpha = 1;
-      }
-    }
+    renderLiving(
+      ctx,
+      w,
+      h,
+      this.scene,
+      this.reduced.matches ? 0 : time / 1000,
+      this.reduced.matches ? 0 : this.pulse,
+    );
     if (this.reduced.matches) return;
     if (this.playing) {
       // Very subtle tonal wash and bass swell; no flashing or abrupt light changes.
       ctx.fillStyle = `hsla(${75 + this.chord * 7}, 40%, 70%, ${0.012 + this.pulse * 0.008})`;
       ctx.fillRect(0, 0, w, h);
       this.pulse *= 0.96;
-    }
-    const seconds = time / 1000;
-    for (const speck of this.specks) {
-      const x = speck.x * w + Math.sin(seconds * 0.09 + speck.phase) * 25;
-      const y = ((speck.y + seconds * 0.007 * speck.speed) % 1) * h;
-      ctx.globalAlpha = this.scene === "rain" ? 0.22 : 0.38;
-      ctx.fillStyle = this.scene === "blossom" ? "#f7ded8" : "#ffffe3";
-      if (this.scene === "rain") {
-        ctx.strokeStyle = "#eef4eb";
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x - 5, y + 15);
-        ctx.stroke();
-      } else if (this.scene === "blossom") {
-        ctx.beginPath();
-        ctx.ellipse(x, y, 3, 1.6, seconds * 0.25 + speck.phase, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        ctx.beginPath();
-        ctx.arc(
-          x,
-          y * 0.85,
-          this.scene === "aurora" ? 1.1 : 1.5,
-          0,
-          Math.PI * 2,
-        );
-        ctx.fill();
-      }
     }
     this.particles = this.particles.filter((p) => time - p.born < 5000);
     for (const particle of this.particles) {
@@ -232,6 +193,18 @@ export class Landscape {
       }
     }
     ctx.globalAlpha = 1;
+    if (this.sceneChangedAt !== undefined) {
+      const progress = Math.min(
+        1,
+        (performance.now() - this.sceneChangedAt) / 1400,
+      );
+      if (progress >= 1) this.finishSceneChange();
+      else {
+        ctx.globalAlpha = 1 - progress * progress * (3 - 2 * progress);
+        ctx.drawImage(this.previous, 0, 0, w, h);
+        ctx.globalAlpha = 1;
+      }
+    }
   }
 
   dispose() {

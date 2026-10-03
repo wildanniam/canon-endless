@@ -38,7 +38,7 @@ export const SCENE_INFO: Record<
 };
 
 type Context = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-const PALETTES: Record<Scene, string[]> = {
+export const PALETTES: Record<Scene, string[]> = {
   lake: [
     "#f4f1e6",
     "#e2e5cd",
@@ -129,7 +129,7 @@ function ridge(
   ctx.fill();
 }
 
-function pine(
+export function pine(
   ctx: Context,
   x: number,
   y: number,
@@ -158,6 +158,7 @@ export function renderLandscape(
   w: number,
   h: number,
   scene: Scene,
+  living = false,
 ) {
   const p = PALETTES[scene];
   const rng = random(`landscape-${scene}`);
@@ -185,7 +186,7 @@ export function renderLandscape(
   );
   ctx.fill();
 
-  if (scene === "aurora") {
+  if (scene === "aurora" && !living) {
     for (let i = 0; i < 160; i++) {
       ctx.globalAlpha = 0.2 + rng() * 0.6;
       ctx.fillStyle = "#eef5d8";
@@ -265,16 +266,17 @@ export function renderLandscape(
         rng,
       );
     }
-    [0.02, 0.09, 0.94, 1.01].forEach((x, i) =>
-      pine(
-        ctx,
-        x * w,
-        h * 0.96,
-        h * (i < 2 ? 0.34 + i * 0.06 : 0.72 + i * 0.035),
-        p[5],
-        rng,
-      ),
-    );
+    if (!living)
+      [0.02, 0.09, 0.94, 1.01].forEach((x, i) =>
+        pine(
+          ctx,
+          x * w,
+          h * 0.96,
+          h * (i < 2 ? 0.34 + i * 0.06 : 0.72 + i * 0.035),
+          p[5],
+          rng,
+        ),
+      );
     ctx.fillStyle = "#fff8c610";
     for (let i = 0; i < 4; i++) {
       ctx.beginPath();
@@ -286,7 +288,7 @@ export function renderLandscape(
     }
   }
 
-  if (scene === "blossom") {
+  if (scene === "blossom" && !living) {
     ctx.strokeStyle = "#5d6f55";
     ctx.lineCap = "round";
     ctx.lineWidth = Math.max(3, w * 0.005);
@@ -312,6 +314,7 @@ export function renderLandscape(
     }
   }
 
+  if (living) return;
   // Foreground reeds and grasses, deliberately confined to the edges.
   ctx.strokeStyle = p[5];
   ctx.lineWidth = 1;

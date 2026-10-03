@@ -1,3 +1,4 @@
+import { composeLoFi } from "./lofi";
 import { pick, random } from "./random";
 import { KEYS, progression, scaleNotes, TICKS_PER_CYCLE } from "./theory";
 import type { Key, Mood } from "./theory";
@@ -10,7 +11,9 @@ export const STAGES = [
   "Ornamented",
   "Rest",
 ] as const;
+export type MusicStyle = "classic" | "lofi";
 export interface Composition {
+  style?: MusicStyle;
   seed: string;
   key: Key;
   mood: Mood;
@@ -51,6 +54,8 @@ export function stageAt(seed: string, cycle: number): number {
 }
 
 export function compose(config: Composition, cycle: number): Phrase {
+  if (config.style === "lofi")
+    return composeLoFi(config, cycle, stageAt(config.seed, cycle));
   const rng = random(
     `${config.seed}:v1:${config.key}:${config.mood}:${config.density}:${cycle}`,
   );
@@ -122,7 +127,7 @@ export class Canon {
   }
 
   phrase(config: Composition, cycle: number): Phrase {
-    const id = `${config.seed}:${config.key}:${config.mood}:${config.density}:${cycle}`;
+    const id = `${config.style || "classic"}:${config.seed}:${config.key}:${config.mood}:${config.density}:${cycle}`;
     let phrase = this.cache.get(id);
     if (!phrase) {
       phrase = compose(config, cycle);

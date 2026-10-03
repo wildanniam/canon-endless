@@ -18,6 +18,8 @@ export const LAYERS = [
   "pad",
   "pizzicato",
   "nature",
+  "beat",
+  "vinyl",
 ] as const;
 export type Layer = (typeof LAYERS)[number];
 export type Mix = Record<Layer, number>;
@@ -29,6 +31,8 @@ export const PRESETS: Record<string, Mix> = {
     pad: 22,
     pizzicato: 0,
     nature: 12,
+    beat: 0,
+    vinyl: 0,
   },
   "Melody only": {
     melody: 85,
@@ -37,6 +41,8 @@ export const PRESETS: Record<string, Mix> = {
     pad: 0,
     pizzicato: 0,
     nature: 0,
+    beat: 0,
+    vinyl: 0,
   },
   "Full ensemble": {
     melody: 80,
@@ -45,6 +51,18 @@ export const PRESETS: Record<string, Mix> = {
     pad: 40,
     pizzicato: 28,
     nature: 12,
+    beat: 0,
+    vinyl: 0,
+  },
+  "Lo-fi afternoon": {
+    melody: 78,
+    bass: 60,
+    chords: 48,
+    pad: 12,
+    pizzicato: 0,
+    nature: 8,
+    beat: 48,
+    vinyl: 18,
   },
   "Soft focus": {
     melody: 65,
@@ -53,9 +71,12 @@ export const PRESETS: Record<string, Mix> = {
     pad: 45,
     pizzicato: 0,
     nature: 22,
+    beat: 0,
+    vinyl: 0,
   },
 };
 export interface Settings extends Composition {
+  style: "classic" | "lofi";
   tempo: number;
   volume: number;
   scene: Scene;
@@ -91,13 +112,17 @@ export function parseSettings(
   const key = p.get("key");
   const mood = p.get("mood");
   const scene = p.get("scene");
+  const style = p.get("style") === "lofi" ? "lofi" : "classic";
+  const defaults =
+    PRESETS[style === "lofi" ? "Lo-fi afternoon" : "Classic quartet"];
   return {
+    style,
     seed: /^[a-zA-Z0-9_-]{1,48}$/.test(seed) ? seed : fallbackSeed,
     key: key && Object.hasOwn(KEYS, key) ? (key as Key) : "D",
     mood: ["bright", "dreamy", "wistful"].includes(mood || "")
       ? (mood as Mood)
       : "bright",
-    tempo: number(p.get("tempo"), 72, 40, 120),
+    tempo: number(p.get("tempo"), style === "lofi" ? 68 : 72, 40, 120),
     density: number(p.get("density"), 40, 0, 100),
     volume: number(p.get("volume"), 65, 0, 100),
     scene: SCENES.includes(scene as Scene) ? (scene as Scene) : "lake",
@@ -106,7 +131,7 @@ export function parseSettings(
     mix: Object.fromEntries(
       LAYERS.map((layer) => [
         layer,
-        number(p.get(layer), PRESETS["Classic quartet"][layer], 0, 100),
+        number(p.get(layer), defaults[layer], 0, 100),
       ]),
     ) as Mix,
   };
@@ -120,6 +145,7 @@ export function sessionUrl(settings: Settings, href: string): string {
   p.set("v", "1");
   for (const name of [
     "seed",
+    "style",
     "key",
     "mood",
     "tempo",

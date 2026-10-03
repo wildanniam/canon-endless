@@ -1,3 +1,4 @@
+import { beatAt, tickStretch } from "../music/lofi";
 import TimerWorker from "./timer.worker?worker";
 import { SoundBank } from "./synth";
 import { Canon, stageAt } from "../music/composer";
@@ -65,6 +66,7 @@ export class Player {
       key: this.settings.key,
       mood: this.settings.mood,
       density: this.settings.density,
+      style: this.settings.style,
       tempo: this.tempoAt(this.context?.currentTime || 0),
     };
   }
@@ -90,6 +92,7 @@ export class Player {
           this.settings.volume,
           this.settings.mood === "dreamy",
         );
+        this.bank.setStyle(this.settings.style);
         this.bank.scene(this.settings.scene);
         this.timer = new TimerWorker();
         this.timer.onmessage = () => this.schedule();
@@ -181,6 +184,7 @@ export class Player {
     }
     this.settings = structuredClone(next);
     this.bank?.mix(next.mix, next.volume, next.mood === "dreamy");
+    this.bank?.setStyle(next.style);
     this.bank?.scene(next.scene);
   }
 
@@ -240,6 +244,13 @@ export class Player {
       const chord = chords[chordIndex];
       const stage = stageAt(this.settings.seed, cycle);
       const time = this.nextTime;
+      if (this.settings.mix.beat > 0) {
+        for (const hit of beatAt(local, stage === 5)) {
+          this.bank.drum(hit.drum, time, hit.velocity);
+          if (hit.drum === "kick")
+            this.queue.push({ kind: "beat", time, cycle, stage });
+        }
+      }
       if (local === 0) this.queue.push({ kind: "cycle", time, cycle, stage });
       if (local % 8 === 0) {
         this.queue.push({
@@ -288,7 +299,8 @@ export class Player {
         });
       }
       this.tick++;
-      this.nextTime += tickSeconds;
+      this.nextTime +=
+        tickSeconds * tickStretch(local, this.settings.style === "lofi");
     }
     // Background tabs can stop RAF; visual backlog must not grow indefinitely.
     if (this.queue.length > 256) this.queue.splice(0, this.queue.length - 256);

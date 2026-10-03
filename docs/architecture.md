@@ -26,6 +26,16 @@ Six stages each last 2–6 cycles in a 24-cycle epoch. Durations are seeded; dir
 | `settings.ts`                  | Validated URLs, presets, seeds and favorites                  |
 | `main.ts`, `ui/*`, `style.css` | Semantic controls, persistence and responsive UI              |
 
+## Lo-fi arrangement and living scenery
+
+`music/lofi.ts` defines a separate `lofi-v1` seeded phrase path: repeated short contours, off-beat responses, rests and chord anchors. Classic composition and its snapshots are unchanged. Style is part of the bounded cache key and share URL; missing/invalid style defaults to Classic with the two new layers off. Eighth-note tick ratios 1.16/0.84 preserve each four-tick beat. Three voices still echo exact earlier phrases.
+
+Lo-fi voices use softer upper partials, a slight inharmonic tine and a slow three-cent pitch curve. A shared low-pass filter softens the ensemble. Kick is a pitched sine envelope; snare/hat use a reusable noise buffer; vinyl uses a quiet seeded loop of hiss/crackle. Drum voices disconnect on end and count toward active audio sources. Layers start at zero before their requested gains ramp in. Both new layers pass through the same master, transition gate and recording output.
+
+The Style selector loads Lo-fi afternoon at 68 bpm or Classic quartet at 72 bpm. Selecting the Lo-fi afternoon preset also selects that style. Other mixer presets change the mix only, leaving the chosen melodic style. Drums can also be enabled in Classic with straight timing. Changes use the existing fade/coalescing path.
+
+`visuals/living.ts` draws bounded environmental motion over cached scenery: 140 shared fleck descriptors, at most 140 rain strokes, 85 stars, three aurora curtains, 70 grasses, or 22 forest lights. Large foreground trees and blossom branches sway separately; thumbnails remain static. Notes retain bounded ripples/particles, and kicks gently affect forest light. The old scene snapshot overlays the complete new scene, including effects, so crossfades do not reveal a new foreground abruptly.
+
 ## Scheduling and resources
 
 The audio clock is authoritative. A worker wakes every 25 ms; the player schedules 180 ms ahead using sixteenth-note ticks. Tempo glides over 900 ms using smoothstep interpolation, affecting future ticks. Visuals consume due events using output latency where available. After a stall, the next deadline moves forward without bursting overdue notes; the musical position is retained rather than tracking wall time.
