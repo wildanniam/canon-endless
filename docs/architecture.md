@@ -54,7 +54,7 @@ Pause suspends the context, preserving scheduled notes and tails. Key/mood/densi
 
 ## Tradeoffs
 
-Web Audio and Canvas 2D keep the first version self-contained; Tone.js, sample packs and a GPU renderer are unnecessary for the current graph/visual complexity. Timbres evoke soft keys and strings but are not sampled instruments. Nature air is filtered synthetic noise, not a recording of birds or water.
+Web Audio and procedural art keep the app self-contained. The initial Canvas 2D implementation now has an optional Three.js Aurora renderer; Tone.js and sample packs remain unnecessary for the audio graph. Timbres evoke soft keys and strings but are not sampled instruments. Nature air is filtered synthetic noise, not a recording of birds or water.
 
 Browser-native recording avoids a large encoder. Format is negotiated with `MediaRecorder`, never mislabeled as WAV/MP3. Layer/master gains ramp. Compression and bounded soft shaping reduce clipping risk; this is not a hearing-safety guarantee.
 
@@ -68,3 +68,16 @@ Scene rotation happens every fourth variation boundary, without replacing a scen
 - [Vite guide](https://vite.dev/guide/): development and static builds.
 
 Sources checked 2026-10-03. See [verification](verification.md) for tested behavior and remaining limits.
+
+
+## Aurora Lake (2026-10-03)
+
+`visuals/aurora.ts` is a lazy-loaded Three.js/WebGL 2 renderer. `visuals/aurora-shaders.ts` contains authored sky, water and glowing-particle shaders. Mountains use bounded faceted strips; 100 three-tier pines and shoreline rocks use instanced geometry. Three trails of 48 points react to real note/voice events, alongside 90 ambient fireflies. The Reflector addon renders the sky and shores into one 256/512 px reflection target; eight reusable ripple uniforms distort and tint the reflected water. There are no external textures, model loaders, bloom passes or extra animation loops.
+
+`Landscape` composites the GPU canvas into the existing visible Canvas 2D frame. This retains interruption-safe crossfades between every scene, including mixed renderer transitions. It owns the sole 30 fps visual loop, pause time and visibility/reduced-motion behavior. The GPU world is cached across scene switches, disposed on lightweight selection/HMR, and permanently falls back for that page after initialization/shader/context failure. An import generation token prevents a disposed or lightweight view from recreating resources. A late import cannot change the active scene.
+
+Aurora caps pixel ratio at 1.4 and initial pixel budgets at 650k narrow/1.45m wide (with a .55 resolution floor). After 120 render samples, average synchronous render cost over 24 ms reduces quality by 20%, down to approximately 64%. This is a conservative CPU submission heuristic, not measured GPU time or guaranteed FPS. Explicit lightweight mode uses the existing illustration. Five other scenes keep their renderer.
+
+`Player.playWaterNote` holds one normalized gesture. The audio scheduler consumes it on the next unscheduled even sixteenth tick, choosing one of six chord tones from the chord at that future tick. Drag events coalesce; one note per eighth is the maximum. Pending input is cleared on pause, interruption, tonal reset or rewind. Muted melody/master and pending tonal transitions reject gestures. Notes use the existing melody gain, transition gate and recording output, and never change v1 generated phrases. A separate `touch` event keeps gestures out of the three canon trails.
+
+The existing dock collapses only in Aurora. A native Controls/Minimize button exposes the same controls; no duplicate music controls are introduced. Automatic collapse avoids hiding a focused setting. Welcome content is inert while listening; Zen keeps its exit. Open-water pointer input is separate from semantic UI controls, and a labeled button provides keyboard access to water notes. The lightweight choice is page-local and intentionally does not alter shared music settings.

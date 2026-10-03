@@ -20,7 +20,7 @@ npm run dev
 Open the local URL printed by Vite, normally [localhost:5173](http://localhost:5173), and press **Play**. There is no backend, API key, remote sample download or account setup.
 
 ```sh
-npm run check   # lint, 36 unit/invariant tests, typecheck and production build
+npm run check   # lint, 40 unit/invariant tests, typecheck and production build
 npm run preview
 ```
 
@@ -29,7 +29,8 @@ npm run preview
 - **An evolving canon.** The I–V–vi–iii–IV–I–IV–V progression grounds each 16-beat phrase. A second and third voice enter after one and two full cycles. Six stages move from calm to flowing, lively, playful, ornamented and rest.
 - **Your own ensemble.** Blend canon voices, ground bass, soft keys, sustained strings, plucked strings, synthesized nature air, soft drums and vinyl texture. Five presets offer a starting point.
 - **A lo-fi afternoon.** Choose **Style → Lo-fi** for a separate syncopated melody, warm electric-piano timbre, subtle pitch drift, swung eighths and a soft beat at 68 bpm. Adjust Soft drums and Vinyl texture in The ensemble. Switching style loads its starting mix and tempo; other controls remain yours to shape.
-- **Six surroundings.** Stillwater, Forest light, Last light, In bloom, Northern night and After the rain. Water shimmers, reeds sway, birds fly, petals drift, forest light breathes, rain falls and aurora curtains flow. Notes make ripples or particles; beats gently influence the atmosphere. Optional scene rotation follows every four variations.
+- **Six surroundings.** Stillwater, Forest light, Last light, In bloom, Aurora Lake and After the rain. Water shimmers, reeds sway, birds fly, petals drift, forest light breathes, rain falls and aurora curtains flow. Notes make ripples or particles; beats gently influence the atmosphere. Optional scene rotation follows every four variations.
+- **An immersive lake.** Aurora Lake uses lazy-loaded Three.js for reflected water, angular mountain ranges, wooded shores, flowing aurora and three light trails driven by the actual canon voices. Press Play to reveal the scene and a compact dock; Controls expands it. Tap/drag the water, or activate its labeled note button with the keyboard, to add quiet chord tones on the next unscheduled eighth. Lightweight scenery switches back to Canvas 2D; unavailable/lost WebGL falls back automatically.
 - **A little control.** Set tempo, movement, volume, key and mood. Dreamy slows the tempo and adds reverb; Wistful uses the minor progression.
 - **Gentle transitions.** Setting changes get a soft overlay. Key, mood and movement fade out and back in; tempo glides, mixer gains ease, and scenery dissolves into the next view. Repeated choices settle on the latest selection.
 - **Moments to keep.** Rewind, save up to 20 sessions on this device, or share a versioned URL containing the seed, current variation, mix and settings. Shared sessions start silently; press Play to revisit them.
@@ -56,12 +57,12 @@ pure composition engine → bounded phrase cache → three delayed voices
                                     ↓              ↓
                           synth / mix / output    timed music events
                                                        ↓
-                                               Canvas 2D scenes
+                                               Canvas 2D / optional Three.js Aurora
 ```
 
-Vite and strict TypeScript keep the application small. Native Web Audio provides additive synthesized timbres, stereo placement, shared reverb, compression and soft limiting. A timer worker schedules ahead of the audio clock. Canvas 2D caches scenery and renders bounded particles at a 30 fps ceiling and capped pixel density. Fonts are self-hosted.
+Vite and strict TypeScript keep the application small. Native Web Audio provides additive synthesized timbres, stereo placement, shared reverb, compression and soft limiting. A timer worker schedules ahead of the audio clock. Canvas 2D caches scenery and renders bounded particles at a 30 fps ceiling and capped pixel density. Aurora loads a separate Three.js chunk only when selected; procedural shaders need no external images or models. Resolution and reflection textures are capped, with a one-way quality downgrade under sustained render cost. Fonts are self-hosted.
 
-Melody is deterministic for a given **v1 seed + style + key + mood + movement + cycle**. Tempo and mix affect playback, not note selection. Changing style, key, mood or movement fades the audio out before restarting the current variation, then fades it back in so delayed voices remain in the same tonal system. Sharing captures a configuration and starting variation; it does not record earlier control changes.
+Melody is deterministic for a given **v1 seed + style + key + mood + movement + cycle**. Tempo and mix affect playback, not note selection. Changing style, key, mood or movement fades the audio out before restarting the current variation, then fades it back in so delayed voices remain in the same tonal system. Sharing captures a configuration and starting variation; it does not record earlier control changes or water-note gestures. Audio recordings include water notes through the same melody/master output.
 
 Read [architecture and decisions](docs/architecture.md), [design brief](DESIGN.md), [verification](docs/verification.md), and [the original plan](docs/project-plan.md).
 
@@ -78,3 +79,5 @@ Chromium desktop and responsive viewports were checked, including actual audio o
 Pages uses GitHub Actions as its publishing source. Deployment needs only the built-in short-lived GitHub token/OIDC permissions, no repository secrets. To redeploy, push a verified change to a configured publishing branch; after this workflow exists on the default branch, it can also be dispatched manually. The environment must permit the publishing branch. Deployment is serialized and gated on the build job. See [GitHub’s custom Pages workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
 
 No analytics or remote runtime media are used. Favorites stay in `localStorage`; share URLs contain composition settings. DM Sans and Cormorant Garamond are distributed under their [bundled SIL Open Font licenses](public/licenses/).
+
+Three.js and its Reflector addon use the [bundled MIT license](public/licenses/THREE.txt). The terrain and shader artwork are authored locally for this app.

@@ -43,6 +43,11 @@ const range = (
 
 app.innerHTML = `
   <canvas id="landscape" aria-hidden="true"></canvas>
+  <div id="world-input" aria-hidden="true" hidden></div>
+  <div class="world-guide" hidden>
+    <p class="voice-legend"><span>First voice</span><span>Its echo</span><span>One more</span></p>
+    <button id="water-note" aria-label="Add a note to the lake">Touch the water. Leave a little melody.<span>or press here</span></button>
+  </div>
   <div class="change-surface" aria-hidden="true">
     <div class="change-veil"></div>
     <div class="change-message">
@@ -83,8 +88,9 @@ app.innerHTML = `
               <button id="rewind" class="icon-button rewind" aria-label="Rewind one variation" title="Rewind one variation" disabled>${icon("rewind", 21)}</button>
             </div>
             <div class="progression" id="progression" aria-label="Canon chord progression"></div>
+            <button id="dock-toggle" class="text-button" aria-expanded="true" aria-controls="tuning progression" hidden>${icon("mix", 17)}<span>Minimize</span></button>
           </div>
-          <div class="controls-row">
+          <div class="controls-row" id="tuning">
             ${range("tempo", "Tempo", settings.tempo, 40, 120, " bpm")}
             ${range("density", "Movement", settings.density)}
             ${range("volume", "Volume", settings.volume, 0, 100, "%")}
@@ -111,6 +117,8 @@ app.innerHTML = `
   <dialog id="scene-dialog" aria-labelledby="scene-dialog-title">
     <div class="dialog-heading"><div><p class="eyebrow">A change of scenery</p><h2 id="scene-dialog-title">Find your somewhere.</h2></div><button class="icon-button" data-close aria-label="Close surroundings">${icon("close")}</button></div>
     <div class="scene-grid">${SCENES.map((scene, i) => `<button class="scene-option" data-scene-option="${scene}" aria-pressed="false"><img alt="" src="${thumbnail(scene)}"/><span><small>0${i + 1}</small><strong>${SCENE_INFO[scene].name}</strong><span class="scene-check">${icon("check", 16)}</span></span></button>`).join("")}</div>
+    <label class="switch-row"><span><strong>Lightweight scenery</strong><small>Use the illustrated scene to save graphics power.</small></span><input id="lightweight" type="checkbox" role="switch"/></label>
+    <p id="renderer-status" class="dialog-note">Illustrated scenery.</p>
     <label class="switch-row"><span><strong>Let the scenery wander</strong><small>Move to a new scene every four variations.</small></span><input id="rotate" type="checkbox" role="switch"/></label>
   </dialog>
   <dialog id="mixer-dialog" aria-labelledby="mixer-dialog-title">
@@ -154,7 +162,7 @@ app.innerHTML = `
   </dialog>
 `;
 
-const landscape = new Landscape($("#landscape"));
+export const landscape = new Landscape($("#landscape"));
 const feedback = new ChangeFeedback();
 let favorites: Favorite[] = [];
 try {
@@ -166,6 +174,7 @@ let toastTimeout: ReturnType<typeof setTimeout>;
 let zen = false;
 let busy = false;
 let hasPlayed = false;
+let compact = false;
 let lastAutoCycle = settings.cycle;
 const lastVolume: Partial<Record<Layer, number>> = {};
 let lastRecordSeed = settings.seed;
@@ -241,6 +250,10 @@ function setScene(scene: Scene, animate = true, announce = true) {
   document.body.dataset.scene = scene;
   document.documentElement.dataset.scene = scene;
   landscape.setScene(scene, animate);
+  syncImmersion();
+  if (scene === "aurora" && player.playing && previous !== "aurora")
+    setCompact(true);
+  if (scene !== "aurora") setCompact(false);
   player.update(settings);
   $("#scene-name").textContent = SCENE_INFO[scene].name;
   $("#scene-place").textContent = SCENE_INFO[scene].place;
@@ -300,6 +313,8 @@ function renderTransport() {
       : "Begin listening";
   $("#playing-dot").classList.toggle("active", playing);
   landscape.setPlaying(playing);
+  syncImmersion();
+  if (!playing) setCompact(false);
   updateStatus();
 }
 async function togglePlay() {
@@ -311,6 +326,7 @@ async function togglePlay() {
     else {
       await player.play();
       hasPlayed = true;
+      if (settings.scene === "aurora") setCompact(true);
     }
   } catch (error) {
     toast(
@@ -325,12 +341,97 @@ async function togglePlay() {
   }
 }
 
+function setCompact(value: boolean) {
+  compact = value && settings.scene === "aurora";
+  const dock = $(".instrument");
+  const focused = document.activeElement;
+  // Never hide a focused setting as the result of an automatic scene rotation.
+  if (
+    compact &&
+    focused instanceof Element &&
+    focused.closest("#tuning,#progression,#saved,#record,#rewind")
+  )
+    compact = false;
+  const before = dock.getBoundingClientRect();
+  document.body.classList.toggle("compact-dock", compact);
+  $("#dock-toggle").setAttribute("aria-expanded", String(!compact));
+  $("#dock-toggle span").textContent = compact ? "Controls" : "Minimize";
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const after = dock.getBoundingClientRect();
+    dock.animate(
+      [
+        { transform: `translateY(${before.top - after.top}px)`, opacity: 0.75 },
+        { transform: "translateY(0)", opacity: 1 },
+      ],
+      { duration: 600, easing: "cubic-bezier(.22,.68,.22,1)" },
+    );
+  }
+}
+function syncImmersion() {
+  const aurora = settings.scene === "aurora";
+  const listening = aurora && player.playing;
+  document.body.classList.toggle("immersive", listening);
+  $(".world-guide").hidden = !listening;
+  $("#world-input").hidden = !listening;
+  if (!aurora && document.activeElement === $("#dock-toggle"))
+    $("#play").focus();
+  $("#dock-toggle").hidden = !aurora;
+  $(".introduction").inert = listening;
+}
+$("#dock-toggle").onclick = () => setCompact(!compact);
+landscape.onRendererChange = (state) => {
+  $("#renderer-status").textContent =
+    state === "webgl"
+      ? "Aurora Lake · immersive scenery."
+      : state === "loading"
+        ? "Opening Aurora Lake… Illustrated scenery is ready meanwhile."
+        : "Illustrated scenery · gentle on your device.";
+};
+$<HTMLInputElement>("#lightweight").onchange = (event) => {
+  landscape.setLightweight((event.target as HTMLInputElement).checked);
+};
+let waterStep = 0;
+$("#water-note").onclick = () => {
+  if (player.playWaterNote((waterStep++ % 6) / 6)) landscape.ripple();
+};
+const worldInput = $("#world-input");
+let dragging = false,
+  lastTouch = 0;
+function touchWater(event: PointerEvent) {
+  const now = performance.now();
+  if (now - lastTouch < 140) return;
+  const x = event.clientX / innerWidth,
+    y =
+      event.clientY /
+      $<HTMLCanvasElement>("#landscape").getBoundingClientRect().height;
+  if (landscape.touch(x, y)) {
+    player.playWaterNote(x);
+    lastTouch = now;
+  }
+}
+worldInput.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0) return;
+  dragging = true;
+  worldInput.setPointerCapture(event.pointerId);
+  touchWater(event);
+});
+worldInput.addEventListener("pointermove", (event) => {
+  landscape.point(event.clientX / innerWidth, event.clientY / innerHeight);
+  if (dragging) touchWater(event);
+});
+for (const event of ["pointerup", "pointercancel", "lostpointercapture"])
+  worldInput.addEventListener(event, () => {
+    dragging = false;
+  });
+worldInput.addEventListener("pointerleave", () => landscape.point(0.5, 0.5));
+
 $("#play").onclick = () => void togglePlay();
 player.onInterrupted = () => {
   renderTransport();
   toast("Audio was interrupted. Press Play to continue.");
 };
 player.onSettingsApplied = () => {
+  landscape.resetVoices();
   renderProgression();
   updateStatus();
 };

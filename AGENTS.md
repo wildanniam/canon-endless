@@ -1,6 +1,6 @@
 # Endless Canon contributor guide
 
-Follow Wildan's global GitHub workflow. This is a Vite + TypeScript application with no server, account system, analytics, audio samples or runtime API keys.
+Follow Wildan's global GitHub workflow. This is a Vite + TypeScript application with no server, account system, analytics, audio samples or runtime API keys. Aurora optionally lazy-loads Three.js; other scenes use Canvas 2D.
 
 ## Commands
 
@@ -32,3 +32,10 @@ Do not conflate deterministic stress tests with real-time endurance, measured au
 ## Deployment
 
 GitHub Pages uses `.github/workflows/pages.yml`, publishing only `dist/` after `npm run check` passes. The initial publishing branch is `codex/1-endless-canon`; `main` is configured for after merge. Remove the temporary branch trigger once merged. Keep Pages permissions scoped to the deploy job; do not add repository secrets. Preserve Vite relative base paths so fonts, the worker and share links work at `/canon-endless/`. Deployment authorization does not authorize merging PRs.
+
+## Aurora renderer and water notes
+
+- `Landscape` owns the only visual RAF. `AuroraWorld` must take scene time as input, never read wall time to animate, and release geometries, materials, its Reflector target and WebGL context on disposal.
+- Keep GPU initialization optional and generation-guarded. Context/shader failure must preserve the 2D scene and audio. Never make the main UI depend on successful WebGL loading.
+- Water gestures are ephemeral and bounded to one pending note; schedule using the actual future chord on an unscheduled eighth. Route through melody/master/recording and keep v1 phrase snapshots unchanged.
+- Validate both renderer modes, lost/unavailable WebGL, delayed import/scene races, pause/reduced-motion pixel equality, compact/expanded mobile controls, keyboard water notes and Zen exit. Do not claim CPU render timing is GPU FPS.

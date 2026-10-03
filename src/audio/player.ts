@@ -19,6 +19,8 @@ export class Player {
   private frame = 0;
   private audibleCycle = 0;
   private running = false;
+  private waterNote?: number;
+  private waterNotesPlayed = 0;
   private starting = false;
   private pendingSettings?: Settings;
   private pendingCycle?: number;
@@ -56,6 +58,7 @@ export class Player {
   get diagnostics() {
     return {
       playing: this.running,
+      waterNotesPlayed: this.waterNotesPlayed,
       context: this.context?.state || "uninitialized",
       cycle: this.cycle,
       scheduledTick: this.tick,
@@ -99,6 +102,7 @@ export class Player {
         this.context.onstatechange = () => {
           if (this.running && this.context?.state !== "running") {
             this.running = false;
+            this.waterNote = undefined;
             this.timer?.postMessage(false);
             cancelAnimationFrame(this.frame);
             this.commitChange();
@@ -124,6 +128,7 @@ export class Player {
   }
 
   async pause() {
+    this.waterNote = undefined;
     this.running = false;
     this.timer?.postMessage(false);
     cancelAnimationFrame(this.frame);
@@ -169,6 +174,20 @@ export class Player {
     else this.resetPosition(target);
   }
 
+  /** One pending gesture, committed on an unscheduled eighth using its actual chord. */
+  playWaterNote(position: number) {
+    if (
+      !this.running ||
+      this.pendingSettings ||
+      !Number.isFinite(position) ||
+      this.settings.mix.melody === 0 ||
+      this.settings.volume === 0
+    )
+      return false;
+    this.waterNote = Math.min(1, Math.max(0, position));
+    return true;
+  }
+
   private tempoAt(time: number) {
     const progress = Math.min(1, Math.max(0, (time - this.tempoStarted) / 0.9));
     const eased = progress * progress * (3 - 2 * progress);
@@ -189,6 +208,7 @@ export class Player {
   }
 
   private queueChange(next: Settings, cycle: number) {
+    this.waterNote = undefined;
     this.pendingSettings = structuredClone(next);
     this.pendingCycle = cycle;
     // Coalesce rapid input into the same fade-out; do not schedule stale timers.
@@ -212,6 +232,7 @@ export class Player {
   }
 
   private resetPosition(cycle: number) {
+    this.waterNote = undefined;
     this.audibleCycle = Math.max(0, Math.floor(cycle));
     this.tick = this.audibleCycle * TICKS_PER_CYCLE;
     this.queue = [];
@@ -244,6 +265,21 @@ export class Player {
       const chord = chords[chordIndex];
       const stage = stageAt(this.settings.seed, cycle);
       const time = this.nextTime;
+      if (local % 2 === 0 && this.waterNote !== undefined) {
+        const step = Math.min(5, Math.floor(this.waterNote * 6));
+        const midi = 60 + chord.notes[step % 3] + (step >= 3 ? 12 : 0);
+        this.bank.note(midi, time, tickSeconds * 2.5, "melody", 0.32, 2);
+        this.queue.push({
+          kind: "touch",
+          time,
+          cycle,
+          stage,
+          midi,
+          chord: chordIndex,
+        });
+        this.waterNote = undefined;
+        this.waterNotesPlayed++;
+      }
       if (this.settings.mix.beat > 0) {
         for (const hit of beatAt(local, stage === 5)) {
           this.bank.drum(hit.drum, time, hit.velocity);

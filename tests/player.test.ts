@@ -10,6 +10,7 @@ const harness = vi.hoisted(() => ({
   banks: [] as {
     fadeTo: ReturnType<typeof vi.fn>;
     silence: ReturnType<typeof vi.fn>;
+    note: ReturnType<typeof vi.fn>;
   }[],
 }));
 vi.mock("../src/audio/timer.worker?worker", () => ({
@@ -241,5 +242,65 @@ describe("smooth transport changes", () => {
     advance(0.31);
     expect(player.cycle).toBe(4);
     expect(player.activeSettings.key).toBe("G");
+  });
+});
+
+describe("water-note gestures", () => {
+  it("never starts audio from a gesture and ignores paused input", async () => {
+    const player = new Player(parseSettings(""));
+    expect(player.playWaterNote(0.5)).toBe(false);
+    expect(harness.banks).toHaveLength(0);
+    await player.play();
+    await player.pause();
+    expect(player.playWaterNote(0.5)).toBe(false);
+  });
+  it("coalesces a drag into one chord tone at the next unscheduled eighth", async () => {
+    const player = new Player(parseSettings("?key=D"));
+    await player.play();
+    const notes = harness.banks[0].note;
+    notes.mockClear();
+    for (let i = 0; i < 100; i++) player.playWaterNote(i / 99);
+    advance(0.3);
+    const gestures = notes.mock.calls.filter((args) => args[4] === 0.32);
+    expect(gestures).toHaveLength(1);
+    expect(gestures[0][0]).toBe(81); // D major's fifth, upper octave.
+    expect(gestures[0][1]).toBeCloseTo(0.06 + 2 * (60 / 72 / 4));
+    expect(gestures[0].slice(3)).toEqual(["melody", 0.32, 2]);
+    expect(player.diagnostics.waterNotesPlayed).toBe(1);
+  });
+  it("chooses the harmony at the future tick across a chord boundary", async () => {
+    const player = new Player(parseSettings("?key=D"));
+    await player.play();
+    for (let t = 0.1; t <= 1.41; t += 0.1) advance(t);
+    expect(player.diagnostics.scheduledTick).toBe(8);
+    harness.banks[0].note.mockClear();
+    player.playWaterNote(0.5);
+    advance(1.6);
+    const gesture = harness.banks[0].note.mock.calls.find(
+      (args) => args[4] === 0.32,
+    );
+    expect(gesture?.[0]).toBe(81); // A, the next chord, rather than the current D.
+    expect(gesture?.[1]).toBeCloseTo(0.06 + 8 * (60 / 72 / 4));
+  });
+
+  it("drops stale gestures on pause and tonal changes, and respects mute", async () => {
+    const settings = parseSettings("");
+    const player = new Player(settings);
+    await player.play();
+    player.playWaterNote(0.5);
+    await player.pause();
+    await player.play();
+    advance(0.3);
+    expect(player.diagnostics.waterNotesPlayed).toBe(0);
+    player.playWaterNote(0.5);
+    player.update({ ...settings, key: "G" }, true);
+    expect(player.playWaterNote(0.5)).toBe(false);
+    advance(0.7);
+    expect(player.diagnostics.waterNotesPlayed).toBe(0);
+    player.update({ ...settings, volume: 0 });
+    expect(player.playWaterNote(0.5)).toBe(false);
+    player.update({ ...settings, mix: { ...settings.mix, melody: 0 } });
+    expect(player.playWaterNote(0.5)).toBe(false);
+    expect(player.playWaterNote(NaN)).toBe(false);
   });
 });

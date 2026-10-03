@@ -2,6 +2,7 @@ import { renderLandscape } from "./landscape";
 import type { Scene } from "../settings";
 import type { MusicEvent } from "../events";
 import { renderLiving } from "./living";
+import type { AuroraWorld } from "./aurora";
 
 interface Particle {
   x: number;
@@ -28,6 +29,106 @@ export class Landscape {
   private clock = 0;
   private chord = 0;
   private pulse = 0;
+  private world?: AuroraWorld;
+  private loading = false;
+  private loadVersion = 0;
+  private light = false;
+  private unavailable = false;
+  private disposed = false;
+  onRendererChange?: (state: string) => void;
+
+  get diagnostics() {
+    return {
+      renderer: this.canvas.dataset.renderer,
+      ...this.world?.diagnostics,
+    };
+  }
+  setLightweight(value: boolean) {
+    if (!this.reduced.matches && !document.hidden && this.width > 0) {
+      this.previous.width = this.canvas.width;
+      this.previous.height = this.canvas.height;
+      this.previous.getContext("2d")!.drawImage(this.canvas, 0, 0);
+      this.sceneChangedAt = performance.now();
+    }
+    this.light = value;
+    if (value) {
+      this.loadVersion++;
+      this.loading = false;
+      this.world?.dispose();
+      this.world = undefined;
+    }
+    this.ensureWorld();
+    this.render(this.clock);
+    this.motionChanged();
+  }
+  point(x: number, y: number) {
+    this.world?.point(x, y);
+  }
+  touch(x: number, y: number) {
+    if (this.scene !== "aurora" || !this.playing) return false;
+    if (this.world)
+      return this.reduced.matches ? y > 0.55 : this.world.touch(x, y);
+    if (y < 0.53) return false;
+    if (!this.reduced.matches)
+      this.particles.push({ x, y, born: this.clock, voice: 0, pitch: 72 });
+    if (this.particles.length > 72) this.particles.shift();
+    return true;
+  }
+  ripple() {
+    if (!this.playing || this.reduced.matches) return;
+    if (this.world) this.world.centerRipple();
+    else this.touch(0.5, 0.65);
+  }
+  resetVoices() {
+    this.particles = [];
+    this.world?.resetVoices();
+  }
+  private rendererState(state: string) {
+    this.canvas.dataset.renderer = state;
+    this.onRendererChange?.(state);
+  }
+  private ensureWorld() {
+    if (this.scene !== "aurora" || this.light || this.unavailable) {
+      this.rendererState("2d");
+      return;
+    }
+    if (this.world) {
+      this.rendererState("webgl");
+      return;
+    }
+    if (this.loading || this.disposed) return;
+    this.loading = true;
+    this.rendererState("loading");
+    const version = ++this.loadVersion;
+    void import("./aurora")
+      .then(({ AuroraWorld }) => {
+        if (this.disposed || version !== this.loadVersion) return;
+        this.world = new AuroraWorld(() => this.fallback());
+        this.world.resize(this.width, this.height);
+        this.loading = false;
+        if (this.scene === "aurora") {
+          if (!this.reduced.matches && !document.hidden) {
+            this.previous.width = this.canvas.width;
+            this.previous.height = this.canvas.height;
+            this.previous.getContext("2d")!.drawImage(this.canvas, 0, 0);
+            this.sceneChangedAt = performance.now();
+          }
+          this.rendererState("webgl");
+          this.motionChanged();
+        }
+      })
+      .catch(() => {
+        if (version === this.loadVersion && !this.disposed) this.fallback();
+      });
+  }
+  private fallback() {
+    this.unavailable = true;
+    this.loading = false;
+    this.world?.dispose();
+    this.world = undefined;
+    this.rendererState("2d");
+    this.render(this.clock);
+  }
 
   constructor(private canvas: HTMLCanvasElement) {
     const context = canvas.getContext("2d");
@@ -55,6 +156,7 @@ export class Landscape {
       this.sceneChangedAt = performance.now();
     } else this.finishSceneChange();
     this.scene = scene;
+    this.ensureWorld();
     this.particles = [];
     this.paintBackground();
     this.render(this.clock);
@@ -66,6 +168,8 @@ export class Landscape {
     this.motionChanged();
   }
   event(event: MusicEvent) {
+    if (this.scene === "aurora" && !this.reduced.matches)
+      this.world?.event(event);
     if (event.kind === "beat") this.pulse = Math.max(this.pulse, 0.7);
     if (event.kind === "chord") {
       this.chord = event.chord || 0;
@@ -94,6 +198,7 @@ export class Landscape {
     this.background.width = this.canvas.width;
     this.background.height = this.canvas.height;
     this.background.getContext("2d")!.setTransform(ratio, 0, 0, ratio, 0, 0);
+    this.world?.resize(this.width, this.height);
     this.paintBackground();
     this.render(this.clock);
   }
@@ -141,24 +246,44 @@ export class Landscape {
       w = this.width,
       h = this.height;
     if (!w || !h) return;
-    ctx.drawImage(this.background, 0, 0, w, h);
-    renderLiving(
-      ctx,
-      w,
-      h,
-      this.scene,
-      this.reduced.matches ? 0 : time / 1000,
-      this.reduced.matches ? 0 : this.pulse,
-    );
+    let rendered3d = false;
+    if (this.scene === "aurora" && this.world && !this.light) {
+      try {
+        ctx.drawImage(
+          this.world.render(
+            this.reduced.matches ? 0 : time / 1000,
+            this.reduced.matches,
+          ),
+          0,
+          0,
+          w,
+          h,
+        );
+        rendered3d = true;
+      } catch {
+        this.fallback();
+      }
+    }
+    if (!rendered3d) {
+      ctx.drawImage(this.background, 0, 0, w, h);
+      renderLiving(
+        ctx,
+        w,
+        h,
+        this.scene,
+        this.reduced.matches ? 0 : time / 1000,
+        this.reduced.matches ? 0 : this.pulse,
+      );
+    }
     if (this.reduced.matches) return;
-    if (this.playing) {
+    if (!rendered3d && this.playing) {
       // Very subtle tonal wash and bass swell; no flashing or abrupt light changes.
       ctx.fillStyle = `hsla(${75 + this.chord * 7}, 40%, 70%, ${0.012 + this.pulse * 0.008})`;
       ctx.fillRect(0, 0, w, h);
       this.pulse *= 0.96;
     }
     this.particles = this.particles.filter((p) => time - p.born < 5000);
-    for (const particle of this.particles) {
+    for (const particle of rendered3d ? [] : this.particles) {
       const life = (time - particle.born) / 5000;
       const x = particle.x * w,
         y = particle.y * h;
@@ -208,6 +333,9 @@ export class Landscape {
   }
 
   dispose() {
+    this.disposed = true;
+    this.loadVersion++;
+    this.world?.dispose();
     cancelAnimationFrame(this.frame);
     this.observer.disconnect();
     this.reduced.removeEventListener("change", this.motionChanged);

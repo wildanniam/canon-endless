@@ -1,5 +1,5 @@
 export interface MusicEvent {
-  kind: "note" | "chord" | "cycle" | "beat";
+  kind: "note" | "chord" | "cycle" | "beat" | "touch";
   time: number;
   midi?: number;
   voice?: number;

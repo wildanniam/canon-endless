@@ -26,8 +26,8 @@ export const SCENE_INFO: Record<
     description: "A few petals carried by a passing melody.",
   },
   aurora: {
-    name: "Northern night",
-    place: "Under an open sky",
+    name: "Aurora Lake",
+    place: "Where the sky meets its reflection",
     description: "A quiet constellation and curtains of green.",
   },
   rain: {
