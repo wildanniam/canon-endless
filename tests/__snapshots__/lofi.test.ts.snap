@@ -1,0 +1,142 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`lo-fi arrangement > preserves Classic phrases and isolates cached styles > lo-fi-v1 1`] = `
+{
+  "cycle": 4,
+  "notes": [
+    {
+      "duration": 1,
+      "midi": 69,
+      "tick": 0,
+      "velocity": 0.7187532724021003,
+    },
+    {
+      "duration": 2,
+      "midi": 69,
+      "tick": 2,
+      "velocity": 0.4881080523738638,
+    },
+    {
+      "duration": 2,
+      "midi": 67,
+      "tick": 5,
+      "velocity": 0.4636115489434451,
+    },
+    {
+      "duration": 2,
+      "midi": 69,
+      "tick": 8,
+      "velocity": 0.695492125642486,
+    },
+    {
+      "duration": 4,
+      "midi": 67,
+      "tick": 11,
+      "velocity": 0.5209476360026747,
+    },
+    {
+      "duration": 2,
+      "midi": 66,
+      "tick": 16,
+      "velocity": 0.7247778213955463,
+    },
+    {
+      "duration": 2,
+      "midi": 66,
+      "tick": 19,
+      "velocity": 0.5523941932851448,
+    },
+    {
+      "duration": 1,
+      "midi": 67,
+      "tick": 22,
+      "velocity": 0.5294852479966358,
+    },
+    {
+      "duration": 1,
+      "midi": 66,
+      "tick": 24,
+      "velocity": 0.7146459109755233,
+    },
+    {
+      "duration": 2,
+      "midi": 69,
+      "tick": 26,
+      "velocity": 0.46399933226872236,
+    },
+    {
+      "duration": 2,
+      "midi": 69,
+      "tick": 29,
+      "velocity": 0.48084684611763806,
+    },
+    {
+      "duration": 1,
+      "midi": 71,
+      "tick": 32,
+      "velocity": 0.6908247141772882,
+    },
+    {
+      "duration": 2,
+      "midi": 71,
+      "tick": 34,
+      "velocity": 0.5228809072775766,
+    },
+    {
+      "duration": 2,
+      "midi": 69,
+      "tick": 37,
+      "velocity": 0.5516046826634556,
+    },
+    {
+      "duration": 2,
+      "midi": 69,
+      "tick": 40,
+      "velocity": 0.7466108318790794,
+    },
+    {
+      "duration": 4,
+      "midi": 67,
+      "tick": 43,
+      "velocity": 0.5187353853974491,
+    },
+    {
+      "duration": 2,
+      "midi": 67,
+      "tick": 48,
+      "velocity": 0.6800066061923281,
+    },
+    {
+      "duration": 2,
+      "midi": 66,
+      "tick": 51,
+      "velocity": 0.48232354383450005,
+    },
+    {
+      "duration": 1,
+      "midi": 69,
+      "tick": 54,
+      "velocity": 0.4832733726501465,
+    },
+    {
+      "duration": 1,
+      "midi": 69,
+      "tick": 56,
+      "velocity": 0.7527589628146962,
+    },
+    {
+      "duration": 2,
+      "midi": 71,
+      "tick": 58,
+      "velocity": 0.4894057392748073,
+    },
+    {
+      "duration": 2,
+      "midi": 69,
+      "tick": 61,
+      "velocity": 0.5234956730296836,
+    },
+  ],
+  "stage": 1,
+}
+`;
