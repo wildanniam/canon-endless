@@ -2002,7 +2002,7 @@ body.compact-dock .world-guide {
   pointer-events: auto;
   border-radius: 6px;
 }
-#water-note span {
+#water-note small {
   display: block;
   font:
     10px/1.6 "DM Sans Variable",
@@ -2109,4 +2109,105 @@ body.compact-dock #record.recording {
 }
 body.compact-dock .dock-footer:has(#record.recording) {
   flex-wrap: wrap;
+}
+
+/* Each world has a readable foreground against its own landscape. */
+body {
+  --world-ink: #f0f4e5;
+  --world-muted: #d4e0d1;
+}
+body[data-scene="forest"][data-renderer="webgl"] {
+  --scene-ink: #f0f0d8;
+  --scene-muted: #d6dfc8;
+  --veil-rgb: 37, 64, 42;
+}
+body[data-scene="lake"],
+body[data-scene="blossom"] {
+  --world-ink: #293d35;
+  --world-muted: #3d5148;
+}
+body[data-scene="mountain"] {
+  --scene-ink: #382e35;
+  --scene-muted: #514349;
+  --world-ink: #fff1db;
+  --world-muted: #f4dec9;
+  --veil-rgb: 225, 183, 159;
+}
+body[data-scene="rain"] {
+  --scene-ink: #263f3c;
+  --scene-muted: #3c5350;
+  --world-ink: #10291c;
+  --world-muted: #10291c;
+}
+.world-guide,
+#water-note {
+  color: var(--world-ink);
+}
+#water-note small {
+  color: var(--world-muted);
+}
+body[data-scene="lake"] #water-note,
+body[data-scene="blossom"] #water-note {
+  text-shadow: 0 1px 10px #ffffff65;
+}
+body[data-scene="lake"] .voice-legend span::before,
+body[data-scene="blossom"] .voice-legend span::before {
+  background: #a9683c;
+}
+body[data-scene="lake"] .voice-legend span:nth-child(2)::before,
+body[data-scene="blossom"] .voice-legend span:nth-child(2)::before {
+  background: #4d755d;
+}
+body[data-scene="lake"] .voice-legend span:nth-child(3)::before,
+body[data-scene="blossom"] .voice-legend span:nth-child(3)::before {
+  background: #78648b;
+}
+@media (max-width: 370px) {
+  #water-note {
+    font-size: 18px;
+    padding-inline: 10px;
+  }
+}
+
+body:not([data-renderer="webgl"]):not([data-scene="aurora"]) {
+  --world-ink: #293d35;
+  --world-muted: #3d5148;
+}
+
+:root[data-scene="forest"][data-renderer="webgl"] {
+  background: #1d3324;
+}
+
+/* A soft mist behind the hint keeps fine text readable over dense vegetation. */
+body[data-scene="rain"] .world-guide::before,
+body:not([data-renderer="webgl"]):not([data-scene="aurora"]) .world-guide::before {
+  content: "";
+  position: absolute;
+  inset: -22px -35px -14px;
+  z-index: -1;
+  background: radial-gradient(ellipse, #f4f1e6ef 20%, #f4f1e6cf 50%, #f4f1e600 74%);
+  filter: blur(6px);
+  pointer-events: none;
+}
+body[data-scene="rain"] #water-note,
+body:not([data-renderer="webgl"]):not([data-scene="aurora"]) #water-note {
+  text-shadow: none;
+}
+body[data-scene="forest"][data-renderer="webgl"] .masthead {
+  position: relative;
+  isolation: isolate;
+}
+body[data-scene="forest"][data-renderer="webgl"] .masthead::before {
+  content: "";
+  position: absolute;
+  inset: -31px -44px auto;
+  height: 115px;
+  z-index: -1;
+  background: linear-gradient(#102019c9, #10201970 55%, transparent);
+  pointer-events: none;
+}
+@media (max-width: 700px) {
+  body[data-scene="forest"][data-renderer="webgl"] .masthead::before {
+    inset: -20px -18px auto;
+  }
 }

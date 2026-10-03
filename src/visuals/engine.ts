@@ -2,7 +2,7 @@ import { renderLandscape } from "./landscape";
 import type { Scene } from "../settings";
 import type { MusicEvent } from "../events";
 import { renderLiving } from "./living";
-import type { AuroraWorld } from "./aurora";
+import type { LivingWorld } from "./world";
 
 interface Particle {
   x: number;
@@ -29,7 +29,7 @@ export class Landscape {
   private clock = 0;
   private chord = 0;
   private pulse = 0;
-  private world?: AuroraWorld;
+  private world?: LivingWorld;
   private loading = false;
   private loadVersion = 0;
   private light = false;
@@ -65,10 +65,11 @@ export class Landscape {
     this.world?.point(x, y);
   }
   touch(x: number, y: number) {
-    if (this.scene !== "aurora" || !this.playing) return false;
+    if (!this.playing) return false;
     if (this.world)
-      return this.reduced.matches ? y > 0.55 : this.world.touch(x, y);
-    if (y < 0.53) return false;
+      return this.world.touch(x, y, !this.reduced.matches);
+    if (y < 0.53 && this.scene !== "forest" && this.scene !== "mountain")
+      return false;
     if (!this.reduced.matches)
       this.particles.push({ x, y, born: this.clock, voice: 0, pitch: 72 });
     if (this.particles.length > 72) this.particles.shift();
@@ -88,11 +89,17 @@ export class Landscape {
     this.onRendererChange?.(state);
   }
   private ensureWorld() {
-    if (this.scene !== "aurora" || this.light || this.unavailable) {
+    if (this.light || this.unavailable) {
       this.rendererState("2d");
       return;
     }
     if (this.world) {
+      try {
+        this.world.setScene(this.scene);
+      } catch {
+        this.fallback();
+        return;
+      }
       this.rendererState("webgl");
       return;
     }
@@ -100,22 +107,20 @@ export class Landscape {
     this.loading = true;
     this.rendererState("loading");
     const version = ++this.loadVersion;
-    void import("./aurora")
-      .then(({ AuroraWorld }) => {
+    void import("./world")
+      .then(({ LivingWorld }) => {
         if (this.disposed || version !== this.loadVersion) return;
-        this.world = new AuroraWorld(() => this.fallback());
+        this.world = new LivingWorld(() => this.fallback(), this.scene);
         this.world.resize(this.width, this.height);
         this.loading = false;
-        if (this.scene === "aurora") {
-          if (!this.reduced.matches && !document.hidden) {
-            this.previous.width = this.canvas.width;
-            this.previous.height = this.canvas.height;
-            this.previous.getContext("2d")!.drawImage(this.canvas, 0, 0);
-            this.sceneChangedAt = performance.now();
-          }
-          this.rendererState("webgl");
-          this.motionChanged();
+        if (!this.reduced.matches && !document.hidden) {
+          this.previous.width = this.canvas.width;
+          this.previous.height = this.canvas.height;
+          this.previous.getContext("2d")!.drawImage(this.canvas, 0, 0);
+          this.sceneChangedAt = performance.now();
         }
+        this.rendererState("webgl");
+        this.motionChanged();
       })
       .catch(() => {
         if (version === this.loadVersion && !this.disposed) this.fallback();
@@ -142,7 +147,10 @@ export class Landscape {
   }
 
   setScene(scene: Scene, animate = true) {
-    if (scene === this.scene) return;
+    if (scene === this.scene) {
+      this.ensureWorld();
+      return;
+    }
     if (
       animate &&
       !this.reduced.matches &&
@@ -168,8 +176,7 @@ export class Landscape {
     this.motionChanged();
   }
   event(event: MusicEvent) {
-    if (this.scene === "aurora" && !this.reduced.matches)
-      this.world?.event(event);
+    if (!this.reduced.matches) this.world?.event(event);
     if (event.kind === "beat") this.pulse = Math.max(this.pulse, 0.7);
     if (event.kind === "chord") {
       this.chord = event.chord || 0;
@@ -247,7 +254,7 @@ export class Landscape {
       h = this.height;
     if (!w || !h) return;
     let rendered3d = false;
-    if (this.scene === "aurora" && this.world && !this.light) {
+    if (this.world && !this.light) {
       try {
         ctx.drawImage(
           this.world.render(

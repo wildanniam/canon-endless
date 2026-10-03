@@ -46,7 +46,7 @@ app.innerHTML = `
   <div id="world-input" aria-hidden="true" hidden></div>
   <div class="world-guide" hidden>
     <p class="voice-legend"><span>First voice</span><span>Its echo</span><span>One more</span></p>
-    <button id="water-note" aria-label="Add a note to the lake">Touch the water. Leave a little melody.<span>or press here</span></button>
+    <button id="water-note" aria-label="Add a note to the lake"><span id="gesture-label">Touch the water. Leave a little melody.</span><small>or press here</small></button>
   </div>
   <div class="change-surface" aria-hidden="true">
     <div class="change-veil"></div>
@@ -251,9 +251,28 @@ function setScene(scene: Scene, animate = true, announce = true) {
   document.documentElement.dataset.scene = scene;
   landscape.setScene(scene, animate);
   syncImmersion();
-  if (scene === "aurora" && player.playing && previous !== "aurora")
-    setCompact(true);
-  if (scene !== "aurora") setCompact(false);
+  const gestures: Record<Scene, [string, string]> = {
+    lake: ["Touch the water. Let it ripple.", "Add a note to the lake"],
+    forest: [
+      "A touch of light between the trees.",
+      "Gather fireflies and add a note",
+    ],
+    mountain: [
+      "Send a little melody into the clouds.",
+      "Send a note into the clouds",
+    ],
+    blossom: [
+      "Stir the petals. Leave a melody.",
+      "Stir the petals and add a note",
+    ],
+    rain: ["Play between the raindrops.", "Make a splash and add a note"],
+    aurora: [
+      "Touch the water. Leave a little melody.",
+      "Add a note to the lake",
+    ],
+  };
+  $("#gesture-label").textContent = gestures[scene][0];
+  $("#water-note").setAttribute("aria-label", gestures[scene][1]);
   player.update(settings);
   $("#scene-name").textContent = SCENE_INFO[scene].name;
   $("#scene-place").textContent = SCENE_INFO[scene].place;
@@ -326,7 +345,7 @@ async function togglePlay() {
     else {
       await player.play();
       hasPlayed = true;
-      if (settings.scene === "aurora") setCompact(true);
+      setCompact(true);
     }
   } catch (error) {
     toast(
@@ -342,7 +361,7 @@ async function togglePlay() {
 }
 
 function setCompact(value: boolean) {
-  compact = value && settings.scene === "aurora";
+  compact = value;
   const dock = $(".instrument");
   const focused = document.activeElement;
   // Never hide a focused setting as the result of an automatic scene rotation.
@@ -368,23 +387,22 @@ function setCompact(value: boolean) {
   }
 }
 function syncImmersion() {
-  const aurora = settings.scene === "aurora";
-  const listening = aurora && player.playing;
+  const listening = player.playing;
   document.body.classList.toggle("immersive", listening);
   $(".world-guide").hidden = !listening;
   $("#world-input").hidden = !listening;
-  if (!aurora && document.activeElement === $("#dock-toggle"))
-    $("#play").focus();
-  $("#dock-toggle").hidden = !aurora;
+  $("#dock-toggle").hidden = false;
   $(".introduction").inert = listening;
 }
 $("#dock-toggle").onclick = () => setCompact(!compact);
 landscape.onRendererChange = (state) => {
+  document.body.dataset.renderer = state;
+  document.documentElement.dataset.renderer = state;
   $("#renderer-status").textContent =
     state === "webgl"
-      ? "Aurora Lake · immersive scenery."
+      ? `${SCENE_INFO[settings.scene].name} · immersive scenery.`
       : state === "loading"
-        ? "Opening Aurora Lake… Illustrated scenery is ready meanwhile."
+        ? "Opening your surroundings… Illustrated scenery is ready meanwhile."
         : "Illustrated scenery · gentle on your device.";
 };
 $<HTMLInputElement>("#lightweight").onchange = (event) => {

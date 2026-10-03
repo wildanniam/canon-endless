@@ -6,7 +6,7 @@ A familiar melody. An endless beginning.
 
 An ambient music instrument inspired by Pachelbel's Canon: a generative melody, three echoing voices, and six living nature scenes. Everything is composed and drawn in your browser.
 
-![Endless Canon — Stillwater](docs/images/stillwater.png)
+![Endless Canon — In bloom in 3D](docs/images/in-bloom-3d.png)
 
 ## Run locally
 
@@ -20,7 +20,7 @@ npm run dev
 Open the local URL printed by Vite, normally [localhost:5173](http://localhost:5173), and press **Play**. There is no backend, API key, remote sample download or account setup.
 
 ```sh
-npm run check   # lint, 40 unit/invariant tests, typecheck and production build
+npm run check   # lint, 45 unit/invariant tests, typecheck and production build
 npm run preview
 ```
 
@@ -29,8 +29,8 @@ npm run preview
 - **An evolving canon.** The I–V–vi–iii–IV–I–IV–V progression grounds each 16-beat phrase. A second and third voice enter after one and two full cycles. Six stages move from calm to flowing, lively, playful, ornamented and rest.
 - **Your own ensemble.** Blend canon voices, ground bass, soft keys, sustained strings, plucked strings, synthesized nature air, soft drums and vinyl texture. Five presets offer a starting point.
 - **A lo-fi afternoon.** Choose **Style → Lo-fi** for a separate syncopated melody, warm electric-piano timbre, subtle pitch drift, swung eighths and a soft beat at 68 bpm. Adjust Soft drums and Vinyl texture in The ensemble. Switching style loads its starting mix and tempo; other controls remain yours to shape.
-- **Six surroundings.** Stillwater, Forest light, Last light, In bloom, Aurora Lake and After the rain. Water shimmers, reeds sway, birds fly, petals drift, forest light breathes, rain falls and aurora curtains flow. Notes make ripples or particles; beats gently influence the atmosphere. Optional scene rotation follows every four variations.
-- **An immersive lake.** Aurora Lake uses lazy-loaded Three.js for reflected water, angular mountain ranges, wooded shores, flowing aurora and three light trails driven by the actual canon voices. Press Play to reveal the scene and a compact dock; Controls expands it. Tap/drag the water, or activate its labeled note button with the keyboard, to add quiet chord tones on the next unscheduled eighth. Lightweight scenery switches back to Canvas 2D; unavailable/lost WebGL falls back automatically.
+- **Six 3D surroundings.** Stillwater pairs mist, pine shores and lily pads with a reflective dawn lake. Forest light follows a mossy path under a canopy with sunbeams and fireflies. Last light opens onto layered peaks, low clouds and circling birds. In bloom surrounds a pond with cherry trees and drifting petals. After the rain combines a wet meadow, flowers, showers and a soft rainbow. Aurora Lake retains its mountains, wooded shores and flowing northern lights. Optional rotation follows every four variations.
+- **A landscape you can play.** Three trails follow the actual canon voices. Press Play to reveal the scene and compact dock; Controls expands it. Tap the water or air, or use the scene's labeled note button with the keyboard, to add quiet chord tones on the next unscheduled eighth. Touches create bounded light bursts and water rings; in the cherry grove they also stir petals. Lightweight scenery returns to the illustrated scenes; unavailable/lost WebGL falls back automatically.
 - **A little control.** Set tempo, movement, volume, key and mood. Dreamy slows the tempo and adds reverb; Wistful uses the minor progression.
 - **Gentle transitions.** Setting changes get a soft overlay. Key, mood and movement fade out and back in; tempo glides, mixer gains ease, and scenery dissolves into the next view. Repeated choices settle on the latest selection.
 - **Moments to keep.** Rewind, save up to 20 sessions on this device, or share a versioned URL containing the seed, current variation, mix and settings. Shared sessions start silently; press Play to revisit them.
@@ -57,12 +57,12 @@ pure composition engine → bounded phrase cache → three delayed voices
                                     ↓              ↓
                           synth / mix / output    timed music events
                                                        ↓
-                                               Canvas 2D / optional Three.js Aurora
+                                               Canvas 2D / optional Three.js worlds
 ```
 
-Vite and strict TypeScript keep the application small. Native Web Audio provides additive synthesized timbres, stereo placement, shared reverb, compression and soft limiting. A timer worker schedules ahead of the audio clock. Canvas 2D caches scenery and renders bounded particles at a 30 fps ceiling and capped pixel density. Aurora loads a separate Three.js chunk only when selected; procedural shaders need no external images or models. Resolution and reflection textures are capped, with a one-way quality downgrade under sustained render cost. Fonts are self-hosted.
+Vite and strict TypeScript keep the application small. Native Web Audio provides additive synthesized timbres, stereo placement, shared reverb, compression and soft limiting. A timer worker schedules ahead of the audio clock. Canvas 2D caches scenery and renders bounded particles at a 30 fps ceiling and capped pixel density. A separate Three.js chunk initializes the selected world without blocking controls; procedural shaders need no external images or models. One renderer and context are reused across scenes; outgoing geometries, instance buffers, materials and reflection targets are released. Resolution and reflection textures are capped, with a one-way quality downgrade under sustained render cost. Fonts are self-hosted.
 
-Melody is deterministic for a given **v1 seed + style + key + mood + movement + cycle**. Tempo and mix affect playback, not note selection. Changing style, key, mood or movement fades the audio out before restarting the current variation, then fades it back in so delayed voices remain in the same tonal system. Sharing captures a configuration and starting variation; it does not record earlier control changes or water-note gestures. Audio recordings include water notes through the same melody/master output.
+Melody is deterministic for a given **v1 seed + style + key + mood + movement + cycle**. Tempo and mix affect playback, not note selection. Changing style, key, mood or movement fades the audio out before restarting the current variation, then fades it back in so delayed voices remain in the same tonal system. Sharing captures a configuration and starting variation; it does not record earlier control changes or landscape gestures. Audio recordings include gesture notes through the same melody/master output.
 
 Read [architecture and decisions](docs/architecture.md), [design brief](DESIGN.md), [verification](docs/verification.md), and [the original plan](docs/project-plan.md).
 

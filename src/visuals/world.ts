@@ -2,6 +2,9 @@ import * as THREE from "three";
 import { Reflector } from "three/addons/objects/Reflector.js";
 import { random } from "../music/random";
 import type { MusicEvent } from "../events";
+import type { Scene } from "../settings";
+import { WORLDS } from "./world-presets";
+import { buildSurroundings } from "./world-scenes";
 import {
   skyVertex,
   skyFragment,
@@ -9,9 +12,8 @@ import {
   waterFragment,
   glowVertex,
   glowFragment,
-} from "./aurora-shaders";
+} from "./world-shaders";
 
-const COLORS = ["#f3d6a1", "#8fe5bb", "#d5e8f3"];
 const TRAIL_LENGTH = 48;
 interface Trail {
   points: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>;
@@ -21,16 +23,16 @@ interface Trail {
 }
 
 /** Optional renderer. The Landscape owns time, transitions and the only RAF loop. */
-export class AuroraWorld {
+export class LivingWorld {
   readonly canvas = document.createElement("canvas");
   readonly renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(48, 1, 0.1, 300);
-  private water: Reflector;
-  private sky: THREE.ShaderMaterial;
+  private water!: Reflector;
+  private sky!: THREE.ShaderMaterial;
   private trails: Trail[] = [];
-  private fireflies: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>;
-  private flyOrigins: Float32Array;
+  private fireflies!: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>;
+  private flyOrigins!: Float32Array;
   private ripples = Array.from(
     { length: 8 },
     () => new THREE.Vector4(0, 0, -100, 0),
@@ -52,7 +54,24 @@ export class AuroraWorld {
   private failed = false;
   private resizePending = false;
 
-  constructor(private onLost: () => void) {
+  private surroundings?: THREE.Group;
+  private animateSurroundings?: (
+    time: number,
+    energy: number,
+    gesture: number,
+  ) => void;
+  private gestureEnergy = 0;
+  private bursts!: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>;
+  private burstOrigins = Array.from(
+    { length: 8 },
+    () => new THREE.Vector4(0, 0, 0, -100),
+  );
+  private burstIndex = 0;
+
+  constructor(
+    private onLost: () => void,
+    private kind: Scene,
+  ) {
     const context = this.canvas.getContext("webgl2", {
       antialias: false,
       alpha: false,
@@ -70,13 +89,42 @@ export class AuroraWorld {
       this.failed = true;
     };
     this.canvas.addEventListener("webglcontextlost", this.contextLost);
-    this.scene.fog = new THREE.Fog("#183b42", 55, 180);
-    this.scene.add(new THREE.HemisphereLight("#92c5c0", "#081b21", 2));
-    const moonLight = new THREE.DirectionalLight("#b8d8ce", 1.7);
+    try {
+      this.buildScene();
+    } catch (error) {
+      this.dispose();
+      throw error;
+    }
+  }
+  setScene(kind: Scene) {
+    if (kind === this.kind) return;
+    this.disposeScene();
+    this.kind = kind;
+    this.trails = [];
+    this.animateSurroundings = undefined;
+    this.surroundings = undefined;
+    for (const ripple of this.ripples) ripple.set(0, 0, -100, 0);
+    for (const origin of this.burstOrigins) origin.set(0, 0, 0, -100);
+    this.energy = 0;
+    this.gestureEnergy = 0;
+    this.pointer.set(0, 0);
+    this.pointerCurrent.set(0, 0);
+    this.buildScene();
+    this.resize(this.width, this.height);
+  }
+  private buildScene() {
+    const config = WORLDS[this.kind];
+    this.scene.fog = new THREE.Fog(config.fog, config.fogNear, config.fogFar);
+    this.scene.add(new THREE.HemisphereLight(config.light, config.ground, 2));
+    const moonLight = new THREE.DirectionalLight(config.sun, 1.7);
     moonLight.position.set(25, 55, -30);
     this.scene.add(moonLight);
     this.sky = new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 }, uEnergy: { value: 0 } },
+      uniforms: {
+        uTime: { value: 0 },
+        uEnergy: { value: 0 },
+        uScene: { value: config.sky },
+      },
       vertexShader: skyVertex,
       fragmentShader: skyFragment,
       side: THREE.BackSide,
@@ -91,13 +139,21 @@ export class AuroraWorld {
       multisample: 0,
       clipBias: 0.003,
       shader: {
-        name: "AuroraWater",
+        name: "WorldWater",
         uniforms: {
           color: { value: new THREE.Color() },
           tDiffuse: { value: null },
           textureMatrix: { value: new THREE.Matrix4() },
           uTime: { value: 0 },
           uRipples: { value: this.ripples },
+          uTint: {
+            value:
+              this.kind === "aurora"
+                ? new THREE.Vector3(0.008, 0.035, 0.043)
+                : new THREE.Color(config.waterTint),
+          },
+          uReflection: { value: config.reflection },
+          uRain: { value: this.kind === "rain" ? 1 : 0 },
         },
         vertexShader: waterVertex,
         fragmentShader: waterFragment,
@@ -107,8 +163,14 @@ export class AuroraWorld {
     this.water.getRenderTarget().texture.type = THREE.UnsignedByteType;
     this.water.rotation.x = -Math.PI / 2;
     this.waterMaterial.uniforms.uRipples.value = this.ripples;
+    this.water.visible = config.water;
     this.scene.add(this.water);
-    this.terrain();
+    if (this.kind === "aurora") this.terrain();
+    else {
+      this.surroundings = new THREE.Group();
+      this.scene.add(this.surroundings);
+      this.animateSurroundings = buildSurroundings(this.kind, this.surroundings);
+    }
     for (let voice = 0; voice < 3; voice++) {
       const positions = new Float32Array(TRAIL_LENGTH * 3);
       const head = new THREE.Vector3(
@@ -117,7 +179,12 @@ export class AuroraWorld {
         -13 - voice * 4,
       );
       for (let i = 0; i < TRAIL_LENGTH; i++) head.toArray(positions, i * 3);
-      const points = this.glowPoints(positions, COLORS[voice], 1.35, true);
+      const points = this.glowPoints(
+        positions,
+        config.trails[voice],
+        1.35,
+        true,
+      );
       points.material.uniforms.uOpacity.value = 0;
       this.trails.push({ points, head, target: head.clone(), lastNote: -100 });
       this.scene.add(points);
@@ -132,11 +199,20 @@ export class AuroraWorld {
     );
     this.fireflies = this.glowPoints(
       this.flyOrigins.slice(),
-      "#d8cf86",
+      config.ambient,
       0.46,
       false,
     );
+    this.fireflies.material.uniforms.uOpacity.value = config.ambientOpacity;
     this.scene.add(this.fireflies);
+    this.bursts = this.glowPoints(
+      new Float32Array(8 * 12 * 3),
+      config.trails[0],
+      1.05,
+      false,
+    );
+    this.bursts.geometry.getAttribute("aAlpha").array.fill(0);
+    this.scene.add(this.bursts);
   }
   private get waterMaterial() {
     return this.water.material as THREE.ShaderMaterial;
@@ -171,7 +247,9 @@ export class AuroraWorld {
       fragmentShader: glowFragment,
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      blending: ["aurora", "forest", "mountain", "rain"].includes(this.kind)
+        ? THREE.AdditiveBlending
+        : THREE.NormalBlending,
     });
     const points = new THREE.Points(geometry, material);
     points.frustumCulled = false;
@@ -294,6 +372,9 @@ export class AuroraWorld {
       ) * this.quality;
     this.renderer.setPixelRatio(Math.max(0.55, ratio));
     this.renderer.setSize(width, height, false);
+    // Keep the shores in view in portrait compositions without widening the UI.
+    if (this.surroundings && WORLDS[this.kind].water)
+      this.surroundings.scale.x = Math.max(0.5, Math.min(1, width / height));
     this.camera.aspect = width / height;
     this.camera.fov = width < 700 ? 60 : 48;
     this.camera.updateProjectionMatrix();
@@ -318,18 +399,32 @@ export class AuroraWorld {
   point(x: number, y: number) {
     this.pointer.set((x - 0.5) * 2, (y - 0.5) * 2);
   }
-  touch(x: number, y: number) {
+  touch(x: number, y: number, animate = true) {
     this.ray.setFromCamera(
       new THREE.Vector2(x * 2 - 1, 1 - y * 2),
       this.camera,
     );
+    const water = WORLDS[this.kind].water;
+    this.waterPlane.set(
+      water ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1),
+      water ? 0 : 20,
+    );
     if (!this.ray.ray.intersectPlane(this.waterPlane, this.hit)) return false;
     if (
-      this.hit.z < -45 ||
-      this.hit.z > 22 ||
-      Math.abs(this.hit.x) > 18 + (this.hit.z + 45) * 0.15
+      water &&
+      (this.hit.z < -60 ||
+        this.hit.z > 22 ||
+        Math.abs(this.hit.x) > 18 + (this.hit.z + 45) * 0.15)
     )
       return false;
+    if (!animate) return true;
+    this.gestureEnergy = 1;
+    this.burstOrigins[this.burstIndex++ % 8].set(
+      this.hit.x,
+      Math.max(0.2, this.hit.y),
+      this.hit.z,
+      this.time,
+    );
     this.ripples[this.rippleIndex++ % 8].set(
       this.hit.x,
       this.hit.z,
@@ -340,6 +435,13 @@ export class AuroraWorld {
   }
   centerRipple() {
     this.ripples[this.rippleIndex++ % 8].set(0, -7, this.time, 1);
+    this.gestureEnergy = 1;
+    this.burstOrigins[this.burstIndex++ % 8].set(
+      0,
+      WORLDS[this.kind].water ? 0.2 : 5,
+      -14,
+      this.time,
+    );
   }
   resetVoices() {
     for (const trail of this.trails) {
@@ -348,7 +450,7 @@ export class AuroraWorld {
     }
   }
   render(seconds: number, reduced: boolean) {
-    if (this.failed) throw new Error("Aurora shader unavailable");
+    if (this.failed) throw new Error("Scene shader unavailable");
     if (this.resizePending) {
       this.resizePending = false;
       this.resize(this.width, this.height);
@@ -371,7 +473,37 @@ export class AuroraWorld {
     this.sky.uniforms.uTime.value = t;
     this.sky.uniforms.uEnergy.value = reduced ? 0 : this.energy;
     this.waterMaterial.uniforms.uTime.value = t;
+    this.animateSurroundings?.(
+      t,
+      reduced ? 0 : this.energy,
+      reduced ? 0 : this.gestureEnergy,
+    );
     this.energy *= Math.exp(-dt * 1.8);
+    this.gestureEnergy *= Math.exp(-dt);
+    const burstPositions = this.bursts.geometry.getAttribute(
+      "position",
+    ) as THREE.BufferAttribute;
+    const burstAlpha = this.bursts.geometry.getAttribute(
+      "aAlpha",
+    ) as THREE.BufferAttribute;
+    for (let slot = 0; slot < 8; slot++) {
+      const origin = this.burstOrigins[slot],
+        age = t - origin.w;
+      const alpha = reduced || age < 0 ? 0 : Math.max(0, 1 - age / 3);
+      for (let p = 0; p < 12; p++) {
+        const angle = (p * Math.PI) / 6,
+          spread = age * 0.65;
+        burstPositions.setXYZ(
+          slot * 12 + p,
+          origin.x + Math.cos(angle) * spread,
+          origin.y + age * 0.6 + Math.sin(angle * 2) * spread * 0.2,
+          origin.z + Math.sin(angle) * spread,
+        );
+        burstAlpha.setX(slot * 12 + p, alpha);
+      }
+    }
+    burstPositions.needsUpdate = true;
+    burstAlpha.needsUpdate = true;
     for (const trail of this.trails) {
       const opacity = reduced
         ? 0
@@ -401,7 +533,7 @@ export class AuroraWorld {
     }
     attr.needsUpdate = true;
     this.renderer.render(this.scene, this.camera);
-    if (this.failed) throw new Error("Aurora shader unavailable");
+    if (this.failed) throw new Error("Scene shader unavailable");
     // Only downgrade after sustained cost; never oscillate quality during a session.
     this.cost += performance.now() - start;
     if (++this.samples === 120) {
@@ -416,6 +548,7 @@ export class AuroraWorld {
   }
   get diagnostics() {
     return {
+      scene: this.kind,
       quality: this.quality,
       pixels: this.canvas.width * this.canvas.height,
       geometries: this.renderer.info.memory.geometries,
@@ -428,12 +561,17 @@ export class AuroraWorld {
     this.failed = true;
     this.onLost();
   };
-  dispose() {
-    this.canvas.removeEventListener("webglcontextlost", this.contextLost);
+  private disposeScene() {
     const geometries = new Set<THREE.BufferGeometry>(),
       materials = new Set<THREE.Material>();
     this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh || object instanceof THREE.Points) {
+      // Instance attributes are separate GPU buffers, not geometry attributes.
+      if (object instanceof THREE.InstancedMesh) object.dispose();
+      if (
+        object instanceof THREE.Mesh ||
+        object instanceof THREE.Points ||
+        object instanceof THREE.Line
+      ) {
         geometries.add(object.geometry);
         for (const material of Array.isArray(object.material)
           ? object.material
@@ -441,9 +579,15 @@ export class AuroraWorld {
           materials.add(material);
       }
     });
-    this.water.dispose();
+    this.water?.dispose();
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) material.dispose();
+    this.scene.clear();
+    this.renderer.renderLists.dispose();
+  }
+  dispose() {
+    this.canvas.removeEventListener("webglcontextlost", this.contextLost);
+    this.disposeScene();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
   }

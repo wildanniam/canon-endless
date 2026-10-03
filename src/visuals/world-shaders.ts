@@ -8,12 +8,47 @@ void main() {
 export const skyFragment = `
 uniform float uTime;
 uniform float uEnergy;
+uniform float uScene;
 varying vec3 vWorld;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
+float noise(vec2 p) {
+  vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.0),f.x),f.y);
+}
+vec3 daylight(vec3 d) {
+  float x=atan(d.x,-d.z), y=asin(clamp(d.y,-1.0,1.0));
+  vec3 top=vec3(.30,.48,.49), horizon=vec3(.81,.78,.60);
+  if(uScene==1.0) { top=vec3(.08,.17,.13);horizon=vec3(.40,.49,.31); }
+  if(uScene==2.0) { top=vec3(.25,.21,.35);horizon=vec3(.86,.39,.22); }
+  if(uScene==3.0) { top=vec3(.44,.54,.63);horizon=vec3(.86,.72,.73); }
+  if(uScene==4.0) { top=vec3(.18,.29,.34);horizon=vec3(.53,.64,.61); }
+  vec3 color=mix(horizon,top,smoothstep(-.1,1.1,y));
+  float c=noise(vec2(x*3.0+uTime*.008,y*11.0));
+  c=c*.7+noise(vec2(x*8.0-uTime*.012,y*26.0))*.3;
+  float clouds=smoothstep(.43,.78,c)*smoothstep(.03,.16,y)*(1.0-smoothstep(.55,.9,y));
+  color=mix(color,uScene==4.0?vec3(.32,.41,.44):vec3(.91,.84,.73),clouds*(uScene==4.0?.75:.42));
+  vec3 sunDir=normalize(vec3(.45,uScene==2.0?.18:.34,-1.0));
+  float sun=length(d-sunDir), radius=uScene==2.0?.063:.037;
+  color+=vec3(.37,.26,.10)*exp(-sun*12.0);
+  color=mix(color,vec3(1.0,.92,.66),1.0-smoothstep(radius,radius+.002,sun));
+  if(uScene==4.0) {
+    float r=length(vec2(x*.82,y-.02));
+    vec3 rainbow=vec3(0.0);
+    rainbow+=vec3(.35,.12,.05)*exp(-pow((r-.52)*110.0,2.0));
+    rainbow+=vec3(.26,.25,.05)*exp(-pow((r-.508)*110.0,2.0));
+    rainbow+=vec3(.05,.24,.12)*exp(-pow((r-.496)*110.0,2.0));
+    rainbow+=vec3(.09,.12,.30)*exp(-pow((r-.484)*110.0,2.0));
+    color+=rainbow*smoothstep(.0,.2,y)*.65;
+  }
+  return color;
+}
+
 void main() {
   vec3 d = normalize(vWorld);
+  vec3 color;
+  if(uScene >= 0.0) { color = daylight(d); } else {
   float h = max(d.y, 0.0);
-  vec3 color = mix(vec3(.035,.093,.105), vec3(.004,.012,.038), smoothstep(0.0,.8,h));
+  color = mix(vec3(.035,.093,.105), vec3(.004,.012,.038), smoothstep(0.0,.8,h));
   float x = atan(d.x, -d.z);
   float y = asin(clamp(d.y,-1.0,1.0));
   float t = uTime * .045;
@@ -36,6 +71,7 @@ void main() {
   color += vec3(.68,.72,.51)*(1.0-smoothstep(.024,.026,moon));
   color += vec3(.16,.22,.14)*exp(-moon*24.0)*.35;
   color += (hash(gl_FragCoord.xy)-.5)/500.0;
+  }
   gl_FragColor = vec4(color,1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -53,6 +89,9 @@ export const waterFragment = `
 uniform sampler2D tDiffuse;
 uniform float uTime;
 uniform vec4 uRipples[8];
+uniform vec3 uTint;
+uniform float uReflection;
+uniform float uRain;
 varying vec4 vMirror;
 varying vec3 vWorld;
 void main() {
@@ -68,10 +107,14 @@ void main() {
     wave += normalize(p-uRipples[i].xy+vec2(.001)) * ring*.008;
     glow += ring*.12;
   }
+  vec2 cell=floor(p/4.0);
+  float age=fract(t*.65+fract(sin(dot(cell,vec2(12.9898,78.233)))*43758.5453));
+  float dist=length(fract(p/4.0)-.5)*4.0-age*2.4;
+  glow+=exp(-dist*dist*70.0)*(1.0-age)*.18*uRain;
   vec2 uv = vMirror.xy/vMirror.w;
   vec3 reflection = texture2D(tDiffuse,uv+wave).rgb;
   float bands = .94+.06*sin(p.y*14.0+sin(p.x*.7+t)*1.5-t);
-  vec3 color = mix(vec3(.008,.035,.043),reflection*bands,.72);
+  vec3 color = mix(uTint,reflection*bands,uReflection);
   color += vec3(.28,.65,.46)*glow;
   float near = 1.0-smoothstep(-12.0,26.0,p.y);
   color *= .68+.32*near;

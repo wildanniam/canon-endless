@@ -1,6 +1,6 @@
 # Endless Canon contributor guide
 
-Follow Wildan's global GitHub workflow. This is a Vite + TypeScript application with no server, account system, analytics, audio samples or runtime API keys. Aurora optionally lazy-loads Three.js; other scenes use Canvas 2D.
+Follow Wildan's global GitHub workflow. This is a Vite + TypeScript application with no server, account system, analytics, audio samples or runtime API keys. All six scenes optionally share a lazy-loaded Three.js renderer; Canvas 2D remains the lightweight and failure fallback.
 
 ## Commands
 
@@ -33,9 +33,11 @@ Do not conflate deterministic stress tests with real-time endurance, measured au
 
 GitHub Pages uses `.github/workflows/pages.yml`, publishing only `dist/` after `npm run check` passes. The initial publishing branch is `codex/1-endless-canon`; `main` is configured for after merge. Remove the temporary branch trigger once merged. Keep Pages permissions scoped to the deploy job; do not add repository secrets. Preserve Vite relative base paths so fonts, the worker and share links work at `/canon-endless/`. Deployment authorization does not authorize merging PRs.
 
-## Aurora renderer and water notes
+## Shared 3D worlds and harmonic gestures
 
-- `Landscape` owns the only visual RAF. `AuroraWorld` must take scene time as input, never read wall time to animate, and release geometries, materials, its Reflector target and WebGL context on disposal.
+- `Landscape` owns the only visual RAF. `LivingWorld` must take scene time as input, never read wall time to animate, and release geometries, materials, instance buffers, its Reflector target and WebGL context on disposal. Scene switches dispose the outgoing contents and reuse the renderer/context.
+- `visuals/world-presets.ts` owns palette/lighting; `world-scenes.ts` builds the five daylight environments, while `world.ts` retains the original Aurora geometry. Animate from the supplied scene clock only. Keep particle/instance counts bounded and reuse per-frame data.
+- Compact controls and harmonic gestures work in every scene. Preserve an explicitly expanded dock when changing scenes. Keep scene-specific text readable in both 3D and illustrated modes.
 - Keep GPU initialization optional and generation-guarded. Context/shader failure must preserve the 2D scene and audio. Never make the main UI depend on successful WebGL loading.
 - Water gestures are ephemeral and bounded to one pending note; schedule using the actual future chord on an unscheduled eighth. Route through melody/master/recording and keep v1 phrase snapshots unchanged.
-- Validate both renderer modes, lost/unavailable WebGL, delayed import/scene races, pause/reduced-motion pixel equality, compact/expanded mobile controls, keyboard water notes and Zen exit. Do not claim CPU render timing is GPU FPS.
+- Validate both renderer modes, lost/unavailable WebGL, delayed import/scene races, pause/reduced-motion pixel equality across all six scenes, repeated scene changes with stable live GPU buffer counts, compact/expanded mobile controls, keyboard water notes and Zen exit. Do not claim CPU render timing is GPU FPS.

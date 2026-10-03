@@ -67,3 +67,20 @@ After Play in Aurora, fade the welcome copy and collapse the instrument into a c
 Motion budget: one capped 30 fps loop, slow camera drift and pointer parallax, locally animated water/sky, bounded trails/ripples, 1.4-second scene blends from the visible frame. The aurora slowly evolves during listening. Reduced motion uses a still; pause freezes time; hidden tabs stop drawing. Lazy-load Three.js, cap render resolution, lower it when sustained render cost is high, offer a lightweight scenery switch, and fall back to Canvas 2D on initialization or context loss. Loading keeps the existing scene visible. No bright flashes or aggressive bloom.
 
 Verify startup with/without WebGL, delayed imports/rapid scene changes, context loss, controls/focus, keyboard/touch notes, mute and setting changes, desktop/mobile, pause/reduced motion and public deployment. Target screenshots: 1440×900 and 390×844, plus 320 px overflow check. Real mobile GPU/battery claims require device evidence.
+
+## Six living worlds — approved 2026-10-03
+
+Wildan likes the Aurora implementation and requests the same depth/effects across the other backgrounds, with varied combinations. The hybrid listening workflow and illustrated aesthetic continue. Preserve Aurora's geometry and palette; extend compact Play, Controls, gestures and lightweight mode to every scene.
+
+| World | Composition and palette | Signature motion / touch response |
+|---|---|---|
+| Stillwater | Open dawn lake, pale apricot sky, sage hills, reeds and lily pads framing clear water | Drifting low mist, birds, water reflections; touch makes rings |
+| Forest light | Tall trunks and clustered overhead crowns, a winding moss path, a warm opening in the canopy | Angled sun shafts, floating pollen and fireflies; touch gathers lights above the path |
+| Last light | Wide ochre/mauve mountain valley, near crags and low cloud layers, setting sun | Slow cloud passage, flocking birds and warm melodic trails; touch releases a small updraft of lights |
+| In bloom | Pink cherry crowns and dark branching trunks around a reflecting pond, plum distant hills | Fluttering petals, drifting reflected canopy; touch sends rings and a petal swirl |
+| After the rain | Green meadow banks and flowers around wet ground, slate clouds opening to soft light | Rain streaks, puddle rings, swaying grass, a restrained rainbow; touch splashes |
+| Aurora Lake | Existing mint aurora, ink sky and reflective wooded lake | Preserve the existing three trails, moon and water interaction |
+
+Reuse one renderer and camera; dispose/rebuild only scene-owned resources. No cache of six contexts or continuously drawing hidden worlds. One 30 fps loop, fixed effect pools, bounded reflection target, adaptive resolution, pause/visibility/reduced-motion behavior and captured-frame crossfades remain. All scenes load optionally over their ready 2D illustration; disabled/unavailable WebGL retains a complete experience. Keep expanded/compact choice when changing surroundings. Gestures use the unchanged future-chord scheduler; new wording describes the scene instead of always referring to water. Scene palettes must keep the masthead, feedback and interaction hint legible on desktop and mobile.
+
+Verification: every scene at 1440×900 and 390×844, 320 px controls, semantic interaction button/touch, playback/settings/share, paused and reduced-motion canvas equality, rapid switching including during initial load, forced context loss and lightweight restoration. Repeated full scene tours must not accumulate WebGL resources. Review actual screenshots for unique silhouettes and framing; preserve Aurora visually.
